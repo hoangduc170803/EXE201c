@@ -1,6 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-const Hero: React.FC = () => {
+interface HeroProps {
+  onSearch?: (keyword: string) => void;
+  initialKeyword?: string;
+}
+
+const Hero: React.FC<HeroProps> = ({ onSearch, initialKeyword = '' }) => {
+  const [searchKeyword, setSearchKeyword] = useState(initialKeyword);
+
+  const handleSearch = () => {
+    if (onSearch) {
+      onSearch(searchKeyword);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   return (
     <div className="w-full bg-surface-light dark:bg-surface-dark pt-6 pb-10 px-4 sm:px-8 lg:px-12 border-b border-[#e7edf3] dark:border-gray-800">
       <div className="mx-auto max-w-[1440px]">
@@ -33,6 +52,9 @@ const Hero: React.FC = () => {
                   className="w-full border-none p-0 text-sm bg-transparent focus:ring-0 placeholder:text-gray-400 text-gray-700 dark:text-gray-200 truncate focus:outline-none"
                   placeholder="Search destinations"
                   type="text"
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  onKeyDown={handleKeyDown}
                 />
               </div>
 
@@ -60,7 +82,10 @@ const Hero: React.FC = () => {
                   </label>
                   <div className="text-sm text-gray-400">Add guests</div>
                 </div>
-                <button className="bg-primary hover:bg-blue-600 text-white h-12 w-12 rounded-full flex items-center justify-center shadow-md transition-transform hover:scale-105 shrink-0 z-10">
+                <button 
+                  onClick={handleSearch}
+                  className="bg-primary hover:bg-blue-600 text-white h-12 w-12 rounded-full flex items-center justify-center shadow-md transition-transform hover:scale-105 shrink-0 z-10"
+                >
                   <span className="material-symbols-outlined">search</span>
                 </button>
               </div>
