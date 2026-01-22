@@ -1,35 +1,40 @@
 import React from 'react';
+import { PropertyDto } from '@/services/api';
 
-const ListingTitle: React.FC = () => {
+interface ListingTitleProps {
+  property: PropertyDto;
+}
+
+const ListingTitle: React.FC<ListingTitleProps> = ({ property }) => {
   return (
     <div className="mb-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-[#0d141b] dark:text-white text-3xl md:text-4xl font-extrabold leading-tight tracking-[-0.033em]">
-          Luxury Villa with Ocean View in Da Nang
+          {property.title}
         </h1>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2 text-sm md:text-base text-[#0d141b] dark:text-gray-300 font-medium">
             <span className="flex items-center gap-1">
               <span className="material-symbols-outlined text-sm filled">star</span>
-              4.92
+              {property.averageRating > 0 ? property.averageRating.toFixed(2) : 'New'}
             </span>
             <span>·</span>
             <a className="underline font-semibold hover:text-primary" href="#">
-              120 reviews
+              {property.totalReviews} reviews
             </a>
             <span>·</span>
             <span className="flex items-center gap-1 text-[#4c739a] dark:text-gray-400">
               <span className="material-symbols-outlined text-sm filled text-rose-500">
                 military_tech
               </span>
-              Superhost
+              {property.host.isVerified ? 'Verified Host' : 'Host'}
             </span>
             <span>·</span>
             <a
               className="underline text-[#4c739a] dark:text-gray-400 hover:text-primary"
               href="#location"
             >
-              Da Nang, Vietnam
+              {property.city}, {property.country}
             </a>
           </div>
           <div className="flex gap-3">

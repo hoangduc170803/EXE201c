@@ -1,13 +1,22 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthMode } from '@/types';
+import { api } from '@/services/api';
 
 const AuthForm: React.FC = () => {
   const navigate = useNavigate();
   const [authMode, setAuthMode] = useState<AuthMode>(AuthMode.LOGIN);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Form States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+
+  // UI States
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -17,13 +26,56 @@ const AuthForm: React.FC = () => {
     setAuthMode(mode);
     setEmail('');
     setPassword('');
+    setFirstName('');
+    setLastName('');
+    setError(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(`Submitting ${authMode} form`, { email, password });
-    // Navigate to profile after login
-    navigate('/profile');
+    setError(null);
+    setLoading(true);
+
+    try {
+      if (authMode === AuthMode.LOGIN) {
+        await api.login({ email, password });
+        navigate('/'); // Redirect to home on success
+      } else {
+        await api.register({
+          email,
+          password,
+          firstName,
+          lastName,
+          role: 'GUEST' // Default role
+        });
+        // After register, maybe auto login or ask to login? 
+        // For now, let's auto login or just redirect to login
+        // The current register API returns AuthResponse, so we can treat it as logged in if we save the token
+        //api.setAccessToken... wait, api.register calls request, but doesn't auto-save token in my implementation of api.register?
+        // Let's check api.ts. api.login saves token. api.register just returns response.
+        // It's better to ask user to login or handle it. 
+        // Actually, let's try to login immediately after register or if the backend returns a token, use it.
+        // My api.ts register implementation returns the same AuthResponse.
+        // So I can just save the token if present.
+
+        // However, looking at api.ts:
+        // async register(request: RegisterRequest) { return this.request... }
+        // It doesn't call setAccessToken.
+
+        // Let's just switch to Login mode and pre-fill email, or direct to login.
+        // Or simpler: Just call login after register.
+
+        const loginRes = await api.login({ email, password });
+        if (loginRes.success) {
+          navigate('/');
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,11 +100,10 @@ const AuthForm: React.FC = () => {
               <label
                 key={mode}
                 onClick={() => handleModeChange(mode)}
-                className={`flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 text-sm font-bold leading-normal transition-all duration-200 ${
-                  authMode === mode
+                className={`flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 text-sm font-bold leading-normal transition-all duration-200 ${authMode === mode
                     ? 'bg-white dark:bg-[#2f3b4b] shadow-sm text-primary'
                     : 'text-[#4c739a] dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-                }`}
+                  }`}
               >
                 <span className="truncate">{mode}</span>
                 <input
@@ -60,7 +111,7 @@ const AuthForm: React.FC = () => {
                   name="auth_mode"
                   value={mode}
                   checked={authMode === mode}
-                  onChange={() => {}}
+                  onChange={() => { }}
                   className="invisible w-0 absolute"
                 />
               </label>
@@ -68,8 +119,47 @@ const AuthForm: React.FC = () => {
           </div>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="p-3 bg-red-50 text-red-500 text-sm rounded-lg border border-red-200">
+            {error}
+          </div>
+        )}
+
         {/* Form Fields */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+
+          {authMode === AuthMode.SIGNUP && (
+            <div className="flex gap-4">
+              <label className="flex flex-col w-full gap-2">
+                <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
+                  First Name
+                </span>
+                <input
+                  type="text"
+                  className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
+                  placeholder="John"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+              </label>
+              <label className="flex flex-col w-full gap-2">
+                <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
+                  Last Name
+                </span>
+                <input
+                  type="text"
+                  className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+              </label>
+            </div>
+          )}
+
           <label className="flex flex-col w-full gap-2">
             <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
               Email address
@@ -120,9 +210,10 @@ const AuthForm: React.FC = () => {
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-primary hover:bg-blue-600 active:bg-blue-700 text-white text-base font-bold leading-normal tracking-[0.015em] transition-all shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
+              disabled={loading}
+              className={`w-full flex cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-4 bg-primary hover:bg-blue-600 active:bg-blue-700 text-white text-base font-bold leading-normal tracking-[0.015em] transition-all shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
-              <span className="truncate">Continue</span>
+              <span className="truncate">{loading ? 'Processing...' : 'Continue'}</span>
             </button>
           </div>
         </form>
@@ -140,10 +231,10 @@ const AuthForm: React.FC = () => {
         <div className="grid grid-cols-2 gap-4">
           <button className="flex items-center justify-center gap-3 rounded-lg border border-[#cfdbe7] dark:border-[#3e4a5b] bg-white dark:bg-[#202934] h-12 px-4 hover:bg-slate-50 dark:hover:bg-[#2f3b4b] transition-colors group">
             <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M23.52 12.29C23.52 11.43 23.44 10.61 23.3 9.81H12V14.45H18.46C18.18 15.93 17.32 17.18 16.05 18.03V21.01H19.93C22.2 18.92 23.52 15.84 23.52 12.29Z" fill="#4285F4"/>
-              <path d="M12 24C15.24 24 17.96 22.92 19.93 21.1L16.05 18.03C14.97 18.75 13.59 19.18 12 19.18C8.87 19.18 6.22 17.07 5.27 14.24H1.26V17.35C3.25 21.31 7.34 24 12 24Z" fill="#34A853"/>
-              <path d="M5.27 14.24C5.03 13.52 4.9 12.77 4.9 12C4.9 11.23 5.03 10.48 5.27 9.76V6.65H1.26C0.45 8.26 0 10.07 0 12C0 13.93 0.45 15.74 1.26 17.35L5.27 14.24Z" fill="#FBBC05"/>
-              <path d="M12 4.82C13.76 4.82 15.34 5.43 16.58 6.61L20.04 3.15C17.96 1.2 15.24 0 12 0C7.34 0 3.25 2.69 1.26 6.65L5.27 9.76C6.22 6.93 8.87 4.82 12 4.82Z" fill="#EA4335"/>
+              <path d="M23.52 12.29C23.52 11.43 23.44 10.61 23.3 9.81H12V14.45H18.46C18.18 15.93 17.32 17.18 16.05 18.03V21.01H19.93C22.2 18.92 23.52 15.84 23.52 12.29Z" fill="#4285F4" />
+              <path d="M12 24C15.24 24 17.96 22.92 19.93 21.1L16.05 18.03C14.97 18.75 13.59 19.18 12 19.18C8.87 19.18 6.22 17.07 5.27 14.24H1.26V17.35C3.25 21.31 7.34 24 12 24Z" fill="#34A853" />
+              <path d="M5.27 14.24C5.03 13.52 4.9 12.77 4.9 12C4.9 11.23 5.03 10.48 5.27 9.76V6.65H1.26C0.45 8.26 0 10.07 0 12C0 13.93 0.45 15.74 1.26 17.35L5.27 14.24Z" fill="#FBBC05" />
+              <path d="M12 4.82C13.76 4.82 15.34 5.43 16.58 6.61L20.04 3.15C17.96 1.2 15.24 0 12 0C7.34 0 3.25 2.69 1.26 6.65L5.27 9.76C6.22 6.93 8.87 4.82 12 4.82Z" fill="#EA4335" />
             </svg>
             <span className="text-[#0d141b] dark:text-white text-sm font-bold">Google</span>
           </button>

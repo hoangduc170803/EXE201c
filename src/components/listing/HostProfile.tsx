@@ -1,6 +1,11 @@
 import React from 'react';
+import { HostDto } from '@/services/api';
 
-const HostProfile: React.FC = () => {
+interface HostProfileProps {
+  host: HostDto;
+}
+
+const HostProfile: React.FC<HostProfileProps> = ({ host }) => {
   return (
     <div className="py-12 border-t border-gray-200 dark:border-gray-700">
       <div className="flex flex-col md:flex-row gap-12">
@@ -10,27 +15,27 @@ const HostProfile: React.FC = () => {
               <div
                 className="bg-cover bg-center rounded-full size-28 border border-gray-200"
                 style={{
-                  backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAYCmhUrIR0ZcQo7mSHFMYLoN8dqFVRKj3K8tHKx2Wc2NfZYSpYldvixO4IHGTTTYgjwPRe4VpIYJNWQwotAKt3Cwzyms6GUKxXkV5_HjYVcl_Cve6H0YYZFvsR3FSQqWY9-JNkqqKWuZfbClPPHZIxGXIy1sQ-SaJWe-IghiyRR6LD_ES7-Wdjnfd1Imh1NlA5lEeMpqmc0vrJSaGix2vYATH8nD_VElMfqy93SSYFMIt5SOWP5Lw_IaXV-G8zj57pERHacdNLweY')",
+                  backgroundImage: `url('${host.avatarUrl || 'https://via.placeholder.com/150'}')`,
                 }}
               ></div>
-              <div className="absolute bottom-1 right-0 bg-primary text-white rounded-full p-1.5 border-4 border-white dark:border-[#1A2633]">
-                <span className="material-symbols-outlined text-lg filled">military_tech</span>
-              </div>
+              {host.isVerified && (
+                <div className="absolute bottom-1 right-0 bg-primary text-white rounded-full p-1.5 border-4 border-white dark:border-[#1A2633]">
+                  <span className="material-symbols-outlined text-lg filled">military_tech</span>
+                </div>
+              )}
             </div>
-            <h3 className="text-2xl font-bold text-[#0d141b] dark:text-white">Nguyen Van A</h3>
-            <p className="text-sm font-semibold text-gray-500 mb-4">Superhost</p>
+            <h3 className="text-2xl font-bold text-[#0d141b] dark:text-white">{host.firstName} {host.lastName}</h3>
+            {host.isVerified && <p className="text-sm font-semibold text-gray-500 mb-4">Verified Host</p>}
+
+            {/* Mock stats for now as not in HostDto */}
             <div className="flex flex-col w-full gap-2 text-left px-4">
               <div className="flex justify-between border-b border-gray-100 dark:border-gray-600 py-2">
                 <span className="text-gray-600 dark:text-gray-400">Reviews</span>
-                <span className="font-bold">342</span>
+                <span className="font-bold">12</span>
               </div>
               <div className="flex justify-between border-b border-gray-100 dark:border-gray-600 py-2">
                 <span className="text-gray-600 dark:text-gray-400">Rating</span>
-                <span className="font-bold">4.92</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-gray-600 dark:text-gray-400">Years hosting</span>
-                <span className="font-bold">5</span>
+                <span className="font-bold">4.8</span>
               </div>
             </div>
           </div>
@@ -38,24 +43,13 @@ const HostProfile: React.FC = () => {
 
         <div className="flex flex-col justify-center gap-4 w-full md:w-2/3">
           <h3 className="text-2xl font-bold text-[#0d141b] dark:text-white">
-            Hosted by Nguyen Van A
+            Hosted by {host.firstName} {host.lastName}
           </h3>
-          <p className="text-gray-600 dark:text-gray-400 max-w-lg">
-            Hi, I'm Nguyen! I was born and raised in Da Nang. I love sharing my beautiful city with
-            travelers from all over the world. I'm a foodie and coffee lover, so ask me for
-            recommendations!
+          <p className="text-gray-600 dark:text-gray-400 max-w-lg whitespace-pre-line">
+            {host.bio || `Hi, I'm ${host.firstName}! I'm excited to host you.`}
           </p>
           <div className="flex flex-col gap-3 mt-4">
-            <div className="flex gap-3 items-start">
-              <span className="material-symbols-outlined text-gray-500">school</span>
-              <span className="text-gray-700 dark:text-gray-300">
-                Where I went to school: Da Nang University
-              </span>
-            </div>
-            <div className="flex gap-3 items-start">
-              <span className="material-symbols-outlined text-gray-500">work</span>
-              <span className="text-gray-700 dark:text-gray-300">My work: Architect</span>
-            </div>
+            {/* Static placeholders or remove if strict */}
             <div className="flex gap-3 items-start">
               <span className="material-symbols-outlined text-gray-500">translate</span>
               <span className="text-gray-700 dark:text-gray-300">

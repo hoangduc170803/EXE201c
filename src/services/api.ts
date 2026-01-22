@@ -19,6 +19,36 @@ export interface PageResponse<T> {
   first: boolean;
 }
 
+// Auth Types
+export interface LoginRequest {
+  email?: string;
+  password?: string;
+}
+
+export interface RegisterRequest {
+  email?: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+}
+
+export interface UserResponse {
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  avatarUrl?: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  tokenType: string;
+  expiresIn: number;
+  user: UserResponse;
+}
+
 export interface PropertyImage {
   id: number;
   imageUrl: string;
@@ -94,13 +124,27 @@ class ApiService {
     this.baseUrl = baseUrl;
   }
 
+  private getAccessToken(): string | null {
+    return localStorage.getItem('token');
+  }
+
+  private setAccessToken(token: string) {
+    localStorage.setItem('token', token);
+  }
+
+  private removeAccessToken() {
+    localStorage.removeItem('token');
+  }
+
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    const token = this.getAccessToken();
     
     const config: RequestInit = {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options?.headers,
       },
     };
@@ -109,7 +153,12 @@ class ApiService {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        if (response.status === 401) {
+          this.removeAccessToken();
+          // Optionally redirect to login or handle session expiry
+        }
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
       const data = await response.json();
@@ -118,6 +167,38 @@ class ApiService {
       console.error('API request failed:', error);
       throw error;
     }
+  }
+
+  // Auth API
+  async login(request: LoginRequest) {
+    const response = await this.request<ApiResponse<AuthResponse>>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+    if (response.success && response.data.accessToken) {
+      this.setAccessToken(response.data.accessToken);
+    }
+    return response;
+  }
+
+  async register(request: RegisterRequest) {
+    return this.request<ApiResponse<AuthResponse>>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getCurrentUser() {
+    return this.request<ApiResponse<UserResponse>>('/auth/me');
+  }
+
+  logout() {
+    this.removeAccessToken();
+    window.location.href = '/auth';
+  }
+
+  isAuthenticated(): boolean {
+    return !!this.getAccessToken();
   }
 
   // Properties API

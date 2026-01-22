@@ -1,21 +1,32 @@
 import React from 'react';
 
-const BookingWidget: React.FC = () => {
+interface BookingWidgetProps {
+  pricePerNight: number;
+  rating: number;
+  totalReviews: number;
+}
+
+const BookingWidget: React.FC<BookingWidgetProps> = ({ pricePerNight, rating, totalReviews }) => {
+  const nights = 5; // Mock for now
+  const cleaningFee = 60;
+  const serviceFee = 80;
+  const total = (pricePerNight * nights) + cleaningFee + serviceFee;
+
   return (
     <div className="relative lg:col-span-1">
       <div className="sticky top-28 z-10 w-full">
         <div className="border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-6 bg-white dark:bg-[#1A2633]">
           <div className="flex justify-between items-end mb-5">
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-[#0d141b] dark:text-white">$100</span>
+              <span className="text-2xl font-bold text-[#0d141b] dark:text-white">${pricePerNight}</span>
               <span className="text-gray-500 text-sm">night</span>
             </div>
             <div className="flex items-center gap-1 text-sm font-semibold">
               <span className="material-symbols-outlined text-[16px] filled">star</span>
-              <span>4.92</span>
+              <span>{rating > 0 ? rating.toFixed(2) : 'New'}</span>
               <span className="text-gray-400">·</span>
               <span className="text-gray-500 underline decoration-gray-400 cursor-pointer">
-                120 reviews
+                {totalReviews} reviews
               </span>
             </div>
           </div>
@@ -56,22 +67,22 @@ const BookingWidget: React.FC = () => {
           {/* Pricing Calculation */}
           <div className="flex flex-col gap-3 text-gray-600 dark:text-gray-300 text-base pb-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex justify-between underline">
-              <span>$100 x 5 nights</span>
-              <span>$500</span>
+              <span>${pricePerNight} x {nights} nights</span>
+              <span>${pricePerNight * nights}</span>
             </div>
             <div className="flex justify-between underline">
               <span>Cleaning fee</span>
-              <span>$60</span>
+              <span>${cleaningFee}</span>
             </div>
             <div className="flex justify-between underline">
               <span>Service fee</span>
-              <span>$80</span>
+              <span>${serviceFee}</span>
             </div>
           </div>
 
           <div className="flex justify-between items-center pt-4 font-bold text-lg text-[#0d141b] dark:text-white">
             <span>Total before taxes</span>
-            <span>$640</span>
+            <span>${total}</span>
           </div>
         </div>
 

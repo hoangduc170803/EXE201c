@@ -1,6 +1,11 @@
 import React from 'react';
 
-const ReviewsSection: React.FC = () => {
+interface ReviewsSectionProps {
+  rating: number;
+  totalReviews: number;
+}
+
+const ReviewsSection: React.FC<ReviewsSectionProps> = ({ rating, totalReviews }) => {
   const metrics = [
     { label: "Cleanliness", score: "4.9", width: "98%" },
     { label: "Accuracy", score: "5.0", width: "100%" },
@@ -27,7 +32,9 @@ const ReviewsSection: React.FC = () => {
     <div className="py-12 border-t border-gray-200 dark:border-gray-700 mt-8">
       <div className="flex items-center gap-2 mb-8">
         <span className="material-symbols-outlined text-2xl filled text-[#0d141b] dark:text-white">star</span>
-        <h2 className="text-2xl font-bold text-[#0d141b] dark:text-white">4.92 · 120 reviews</h2>
+        <h2 className="text-2xl font-bold text-[#0d141b] dark:text-white">
+          {rating > 0 ? rating.toFixed(2) : 'New'} · {totalReviews} reviews
+        </h2>
       </div>
 
       {/* Review Metrics */}
