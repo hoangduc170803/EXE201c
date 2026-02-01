@@ -196,3 +196,50 @@ export interface Conversation {
   lastMessageTime: string;
   isOnline?: boolean;
 }
+
+// Property Filter Types
+export interface PropertyFilter {
+  categoryId?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  propertyType?: 'ENTIRE_PLACE' | 'PRIVATE_ROOM' | 'SHARED_ROOM';
+  amenityIds?: number[];
+  city?: string;
+  isInstantBook?: boolean;
+  freeCancellation?: boolean;
+  minGuests?: number;
+  checkIn?: string;
+  checkOut?: string;
+}
+
+export interface GuestCount {
+  adults: number;
+  children: number;
+  infants: number;
+  pets: number;
+}
+
+export interface SearchCriteria {
+  location: string;
+  checkIn: Date | null;
+  checkOut: Date | null;
+  guests: GuestCount;
+}
+
+export interface MapMarkerData {
+  id: string;
+  price: number;
+  lat: number;
+  lng: number;
+  isActive?: boolean;
+}
+
+export interface FilterDropdownProps {
+  label: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  children: React.ReactNode;
+  hasActiveFilters?: boolean;
+}
+
