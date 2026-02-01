@@ -1,5 +1,7 @@
 // API Configuration
-const API_BASE_URL = 'http://localhost:8081/api';
+const API_BASE_URL = 'http://localhost:8080/api';
+
+import type { PropertyFilter } from '@/types';
 
 // Types for API responses
 export interface ApiResponse<T> {
@@ -248,6 +250,32 @@ class ApiService {
   // Amenities API
   async getAmenities() {
     return this.request<ApiResponse<AmenityDto[]>>('/amenities');
+  }
+
+  // Filter Properties API
+  async filterProperties(filter: PropertyFilter, page = 0, size = 12) {
+    const params = new URLSearchParams();
+
+    if (filter.categoryId) params.append('categoryId', String(filter.categoryId));
+    if (filter.minPrice !== undefined) params.append('minPrice', String(filter.minPrice));
+    if (filter.maxPrice !== undefined) params.append('maxPrice', String(filter.maxPrice));
+    if (filter.propertyType) params.append('propertyType', filter.propertyType);
+    if (filter.amenityIds && filter.amenityIds.length > 0) {
+      filter.amenityIds.forEach(id => params.append('amenityIds', String(id)));
+    }
+    if (filter.city) params.append('city', filter.city);
+    if (filter.isInstantBook !== undefined) params.append('isInstantBook', String(filter.isInstantBook));
+    if (filter.freeCancellation !== undefined) params.append('freeCancellation', String(filter.freeCancellation));
+    if (filter.minGuests !== undefined) params.append('minGuests', String(filter.minGuests));
+    if (filter.checkIn) params.append('checkIn', filter.checkIn);
+    if (filter.checkOut) params.append('checkOut', filter.checkOut);
+
+    params.append('page', String(page));
+    params.append('size', String(size));
+
+    return this.request<ApiResponse<PageResponse<PropertyDto>>>(
+      `/properties/filter?${params.toString()}`
+    );
   }
 }
 
