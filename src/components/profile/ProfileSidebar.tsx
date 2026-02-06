@@ -1,12 +1,27 @@
 import React from 'react';
-import { User, Heart, History, Settings, LogOut, BadgeCheck } from 'lucide-react';
-import { UserProfile } from '@/types';
+import { User, Heart, Settings, LogOut, BadgeCheck, Calendar, } from 'lucide-react';
+import { UserProfile } from '../../types';
 
 interface SidebarProps {
   user: UserProfile;
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
 }
 
-const ProfileSidebar: React.FC<SidebarProps> = ({ user }) => {
+const ProfileSidebar: React.FC<SidebarProps> = ({ user, activeTab = 'profile', onTabChange }) => {
+  const menuItems = [
+    { id: 'profile', icon: User, label: 'Thông tin cá nhân' },
+    { id: 'bookings', icon: Calendar, label: 'Lịch sử đặt phòng' },
+    { id: 'favorites', icon: Heart, label: 'Yêu thích' },
+    { id: 'settings', icon: Settings, label: 'Cài đặt' },
+  ];
+
+  const handleTabClick = (tabId: string) => {
+    if (onTabChange && ['profile', 'bookings', 'favorites', 'settings'].includes(tabId)) {
+      onTabChange(tabId);
+    }
+  };
+
   return (
     <aside className="w-full lg:w-72 flex-shrink-0">
       <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4 sticky top-24">
@@ -30,22 +45,41 @@ const ProfileSidebar: React.FC<SidebarProps> = ({ user }) => {
         
         {/* Nav Links */}
         <nav className="flex flex-col gap-2">
-          <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary/10 text-primary transition-colors group" href="#">
-            <User className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            <span className="text-sm font-medium">Thông tin cá nhân</span>
-          </a>
-          <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#0d141b] hover:bg-slate-50 transition-colors group" href="#">
-            <Heart className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" />
-            <span className="text-sm font-medium">Yêu thích</span>
-          </a>
-          <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#0d141b] hover:bg-slate-50 transition-colors group" href="#">
-            <History className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" />
-            <span className="text-sm font-medium">Lịch sử đặt phòng</span>
-          </a>
-          <a className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#0d141b] hover:bg-slate-50 transition-colors group" href="#">
-            <Settings className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" />
-            <span className="text-sm font-medium">Cài đặt</span>
-          </a>
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            const isClickable = ['profile', 'bookings', 'favorites', 'settings'].includes(item.id);
+
+            let buttonClass = 'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group text-left w-full ';
+            if (isActive) {
+              buttonClass += 'bg-primary/10 text-primary';
+            } else if (isClickable) {
+              buttonClass += 'text-[#0d141b] hover:bg-slate-50';
+            } else {
+              buttonClass += 'text-slate-400 cursor-not-allowed';
+            }
+
+            let iconClass = 'w-5 h-5 transition-all ';
+            if (isActive) {
+              iconClass += 'text-primary scale-110';
+            } else if (isClickable) {
+              iconClass += 'text-slate-400 group-hover:text-primary';
+            } else {
+              iconClass += 'text-slate-300';
+            }
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleTabClick(item.id)}
+                disabled={!isClickable}
+                className={buttonClass}
+              >
+                <Icon className={iconClass} />
+                <span className="text-sm font-medium">{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
         
         <div className="mt-6 pt-6 border-t border-slate-100">

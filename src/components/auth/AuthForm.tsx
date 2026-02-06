@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthMode } from '@/types';
 import { api } from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AuthForm: React.FC = () => {
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
   const [authMode, setAuthMode] = useState<AuthMode>(AuthMode.LOGIN);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -39,6 +41,7 @@ const AuthForm: React.FC = () => {
     try {
       if (authMode === AuthMode.LOGIN) {
         await api.login({ email, password });
+        await refreshUser(); // Refresh user state after login
         navigate('/'); // Redirect to home on success
       } else {
         await api.register({
@@ -48,27 +51,8 @@ const AuthForm: React.FC = () => {
           lastName,
           role: 'GUEST' // Default role
         });
-        // After register, maybe auto login or ask to login? 
-        // For now, let's auto login or just redirect to login
-        // The current register API returns AuthResponse, so we can treat it as logged in if we save the token
-        //api.setAccessToken... wait, api.register calls request, but doesn't auto-save token in my implementation of api.register?
-        // Let's check api.ts. api.login saves token. api.register just returns response.
-        // It's better to ask user to login or handle it. 
-        // Actually, let's try to login immediately after register or if the backend returns a token, use it.
-        // My api.ts register implementation returns the same AuthResponse.
-        // So I can just save the token if present.
-
-        // However, looking at api.ts:
-        // async register(request: RegisterRequest) { return this.request... }
-        // It doesn't call setAccessToken.
-
-        // Let's just switch to Login mode and pre-fill email, or direct to login.
-        // Or simpler: Just call login after register.
-
-        const loginRes = await api.login({ email, password });
-        if (loginRes.success) {
-          navigate('/');
-        }
+        await refreshUser(); // Refresh user state after registration
+        navigate('/');
       }
     } catch (err: any) {
       console.error(err);

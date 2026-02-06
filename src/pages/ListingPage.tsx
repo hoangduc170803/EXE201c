@@ -76,11 +76,14 @@ const ListingPage: React.FC = () => {
           {/* MainContent Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 relative">
             <ListingInfo property={property} />
-            <BookingWidget
-              pricePerNight={property.pricePerNight}
-              rating={property.averageRating}
-              totalReviews={property.totalReviews}
-            />
+          <BookingWidget
+            pricePerNight={property.pricePerNight}
+            rating={property.averageRating}
+            totalReviews={property.totalReviews}
+            cleaningFee={property.cleaningFee}
+            serviceFee={property.serviceFee}
+            property={property}
+          />
           </div>
 
           <ReviewsSection

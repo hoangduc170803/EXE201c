@@ -6,17 +6,61 @@ import ReservationStats from '@/components/host/ReservationStats';
 import ReservationList from '@/components/host/ReservationList';
 import ReservationCalendar from '@/components/host/ReservationCalendar';
 import ReservationSidebar from '@/components/host/ReservationSidebar';
-import { HOST_USER } from '@/constants';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ReservationsPage: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, loading } = useAuth();
+
+  // Redirect if not authenticated or not a host
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background-light dark:bg-background-dark">
+        <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background-light dark:bg-background-dark">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Authentication Required</h1>
+          <p className="text-slate-600 dark:text-slate-400 mb-4">Please log in to access the host portal.</p>
+          <Link to="/auth" className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-semibold">
+            Log In
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user.isHost && !user.roles?.includes('ROLE_HOST')) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background-light dark:bg-background-dark">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">Host Access Required</h1>
+          <p className="text-slate-600 dark:text-slate-400 mb-4">You need to become a host to access this page.</p>
+          <Link to="/host" className="bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg font-semibold">
+            Become a Host
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const hostUser = {
+    name: user.fullName || `${user.firstName} ${user.lastName}`,
+    avatarUrl: user.avatarUrl || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.firstName}`,
+    role: 'Host'
+  };
 
   return (
     <div className="flex h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-white overflow-hidden page-transition">
       
       <HostSidebar 
-        user={HOST_USER} 
-        isOpen={mobileMenuOpen} 
+        user={hostUser}
+        isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
       />
 

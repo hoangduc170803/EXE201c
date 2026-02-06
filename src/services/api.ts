@@ -1,7 +1,7 @@
 // API Configuration
 const API_BASE_URL = 'http://localhost:8080/api';
 
-import type { PropertyFilter } from '@/types';
+import type {BookingResponse, CreateBookingRequest, PropertyFilter, BookingStatsResponse, BookingCalendarResponse} from '@/types';
 
 // Types for API responses
 export interface ApiResponse<T> {
@@ -40,8 +40,18 @@ export interface UserResponse {
   email: string;
   firstName: string;
   lastName: string;
-  role: string;
+  fullName?: string;
+  phone?: string;
   avatarUrl?: string;
+  dateOfBirth?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  bio?: string;
+  isVerified?: boolean;
+  isHost?: boolean;
+  roles?: string[];
+  createdAt?: string;
 }
 
 export interface AuthResponse {
@@ -160,6 +170,14 @@ class ApiService {
           // Optionally redirect to login or handle session expiry
         }
         const errorData = await response.json().catch(() => ({}));
+        console.error('API Error Response:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          url,
+          method: config.method,
+          body: config.body
+        });
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
       
@@ -184,10 +202,14 @@ class ApiService {
   }
 
   async register(request: RegisterRequest) {
-    return this.request<ApiResponse<AuthResponse>>('/auth/register', {
+    const response = await this.request<ApiResponse<AuthResponse>>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(request),
     });
+    if (response.success && response.data.accessToken) {
+      this.setAccessToken(response.data.accessToken);
+    }
+    return response;
   }
 
   async getCurrentUser() {
@@ -276,6 +298,96 @@ class ApiService {
     return this.request<ApiResponse<PageResponse<PropertyDto>>>(
       `/properties/filter?${params.toString()}`
     );
+  }
+
+  // Booking API
+  async getBookedDates(propertyId: number) {
+    return this.request<ApiResponse<string[]>>(`/bookings/booked-dates/${propertyId}`);
+  }
+
+  async checkAvailability(propertyId: number, checkIn: string, checkOut: string) {
+    return this.request<ApiResponse<{ available: boolean }>>(
+      `/bookings/check-availability?propertyId=${propertyId}&checkIn=${checkIn}&checkOut=${checkOut}`
+    );
+  }
+
+  async createBooking(request: CreateBookingRequest) {
+    return this.request<ApiResponse<BookingResponse>>('/bookings', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async processPayment(bookingId: number, paymentMethod: string) {
+    return this.request<ApiResponse<BookingResponse>>(
+      `/bookings/${bookingId}/payment?paymentMethod=${encodeURIComponent(paymentMethod)}`,
+      { method: 'PUT' }
+    );
+  }
+
+  async confirmBooking(bookingId: number) {
+    return this.request<ApiResponse<BookingResponse>>(`/bookings/${bookingId}/confirm`, {
+      method: 'PUT',
+    });
+  }
+
+  async cancelBooking(bookingId: number, reason?: string) {
+    const url = reason
+      ? `/bookings/${bookingId}/cancel?reason=${encodeURIComponent(reason)}`
+      : `/bookings/${bookingId}/cancel`;
+    return this.request<ApiResponse<BookingResponse>>(url, {
+      method: 'PUT',
+    });
+  }
+
+  async getHostBookings(page = 0, size = 10) {
+    return this.request<ApiResponse<PageResponse<BookingResponse>>>(
+      `/bookings/host-bookings?page=${page}&size=${size}`
+    );
+  }
+
+  async getMyBookings(page = 0, size = 10) {
+    return this.request<ApiResponse<PageResponse<BookingResponse>>>(
+      `/bookings/my-bookings?page=${page}&size=${size}`
+    );
+  }
+
+  async getBookingById(id: number) {
+    return this.request<ApiResponse<BookingResponse>>(`/bookings/${id}`);
+  }
+
+  // New booking statistics and calendar endpoints
+  async getHostBookingStats() {
+    return this.request<ApiResponse<BookingStatsResponse>>('/bookings/host-stats');
+  }
+
+  async getHostBookingCalendar(year?: number, month?: number) {
+    const params = new URLSearchParams();
+    if (year) params.append('year', String(year));
+    if (month) params.append('month', String(month));
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return this.request<ApiResponse<BookingCalendarResponse>>(`/bookings/host-calendar${queryString}`);
+  }
+
+  // User Profile API
+  async getUserProfile() {
+    return this.getCurrentUser();
+  }
+
+  async updateUserProfile(data: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    dateOfBirth?: string;
+    address?: string;
+    city?: string;
+    country?: string;
+    bio?: string;
+  }) {
+    return this.request<ApiResponse<UserResponse>>('/users/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   }
 }
 
