@@ -1,30 +1,178 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '@/services/api';
+import type { BookingCalendarResponse, CalendarBookingResponse } from '@/types';
 
 const ReservationCalendar: React.FC = () => {
-  const days = [
-    { day: '29', month: 'prev', content: null },
-    { day: '30', month: 'prev', content: null },
-    { day: '1', month: 'curr', content: null },
-    { day: '2', month: 'curr', content: { type: 'checked-in', label: 'Checked In' } },
-    { day: '3', month: 'curr', content: { type: 'checked-in', label: 'Checked In' } },
-    { day: '4', month: 'curr', content: null },
-    { day: '5', month: 'curr', content: null },
-    { day: '6', month: 'curr', content: null },
-    { day: '7', month: 'curr', content: null },
-    { day: '8', month: 'curr', content: null },
-    { day: '9', month: 'curr', content: null },
-    { day: '10', month: 'curr', content: null },
-    { day: '11', month: 'curr', content: null },
-    { day: '12', month: 'curr', content: { type: 'guest', name: 'Nguyễn Văn A' } },
-    { day: '13', month: 'curr', content: { type: 'guest', name: 'Nguyễn Văn A' } },
-    { day: '14', month: 'curr', content: { type: 'guest', name: 'Nguyễn Văn A' } },
-    { day: '15', month: 'curr', content: { type: 'guest', name: 'Nguyễn Văn A' } },
-  ];
+  const [calendarData, setCalendarData] = useState<BookingCalendarResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  useEffect(() => {
+    loadCalendarData(currentDate.getFullYear(), currentDate.getMonth() + 1);
+  }, [currentDate]);
+
+  const loadCalendarData = async (year: number, month: number) => {
+    try {
+      setLoading(true);
+      setError('');
+      const response = await api.getHostBookingCalendar(year, month);
+      if (response.success && response.data) {
+        setCalendarData(response.data);
+      }
+    } catch (error: any) {
+      console.error('Failed to load calendar data:', error);
+      setError(error.message || 'Failed to load calendar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateCalendarDays = () => {
+    if (!calendarData) return [];
+
+    const year = calendarData.year;
+    const month = calendarData.month;
+
+    // Get first day of month and number of days
+    const firstDay = new Date(year, month - 1, 1);
+    const lastDay = new Date(year, month, 0);
+    const numDaysInMonth = lastDay.getDate();
+    const startWeekday = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+    // Convert to Monday = 0, Sunday = 6
+    const mondayBasedStartDay = startWeekday === 0 ? 6 : startWeekday - 1;
+
+    const days: Array<{
+      day: string;
+      month: 'prev' | 'curr' | 'next';
+      fullDate: Date;
+      content: CalendarBookingResponse | null;
+    }> = [];
+
+    // Add days from previous month
+    const prevMonth = new Date(year, month - 2, 0);
+    const prevMonthDays = prevMonth.getDate();
+    for (let i = mondayBasedStartDay - 1; i >= 0; i--) {
+      const day = prevMonthDays - i;
+      days.push({
+        day: String(day),
+        month: 'prev',
+        fullDate: new Date(year, month - 2, day),
+        content: null
+      });
+    }
+
+    // Add days from current month
+    for (let day = 1; day <= numDaysInMonth; day++) {
+      const fullDate = new Date(year, month - 1, day);
+      const dateString = fullDate.toISOString().split('T')[0];
+
+      // Find booking for this date
+      const booking = calendarData.bookings.find(b => b.date === dateString);
+
+      days.push({
+        day: String(day),
+        month: 'curr',
+        fullDate,
+        content: booking || null
+      });
+    }
+
+    // Add days from next month to complete the grid (up to 42 days total)
+    const remainingDays = 42 - days.length;
+    for (let day = 1; day <= remainingDays; day++) {
+      days.push({
+        day: String(day),
+        month: 'next',
+        fullDate: new Date(year, month, day),
+        content: null
+      });
+    }
+
+    return days;
+  };
+
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    const newDate = new Date(currentDate);
+    if (direction === 'prev') {
+      newDate.setMonth(newDate.getMonth() - 1);
+    } else {
+      newDate.setMonth(newDate.getMonth() + 1);
+    }
+    setCurrentDate(newDate);
+  };
+
+  const getMonthYearText = () => {
+    if (!calendarData) return '';
+    const monthNames = [
+      'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+      'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+    ];
+    return `${monthNames[calendarData.month - 1]} ${calendarData.year}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white dark:bg-[#1A2633] rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-48 animate-pulse"></div>
+          <div className="h-6 bg-gray-300 dark:bg-gray-600 rounded w-32 animate-pulse"></div>
+        </div>
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5, 6].map((row) => (
+            <div key={row} className="flex gap-px">
+              {[1, 2, 3, 4, 5, 6, 7].map((col) => (
+                <div key={col} className="h-20 bg-gray-200 dark:bg-gray-700 rounded animate-pulse flex-1"></div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white dark:bg-[#1A2633] rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+        <div className="text-center py-8 text-red-600 dark:text-red-400">
+          {error}
+          <br />
+          <button
+            onClick={() => loadCalendarData(currentDate.getFullYear(), currentDate.getMonth() + 1)}
+            className="mt-2 text-primary underline hover:no-underline"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const days = generateCalendarDays();
 
   return (
     <div className="bg-white dark:bg-[#1A2633] rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-bold text-slate-900 dark:text-white">Lịch đặt phòng - Tháng 10</h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+            Lịch đặt phòng - {getMonthYearText()}
+          </h3>
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigateMonth('prev')}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            >
+              <span className="material-symbols-outlined text-gray-600 dark:text-gray-400">chevron_left</span>
+            </button>
+            <button
+              onClick={() => navigateMonth('next')}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            >
+              <span className="material-symbols-outlined text-gray-600 dark:text-gray-400">chevron_right</span>
+            </button>
+          </div>
+        </div>
         <a href="#" className="text-sm font-bold text-primary hover:text-blue-700 transition-colors">
           Xem toàn bộ lịch
         </a>
@@ -42,30 +190,38 @@ const ReservationCalendar: React.FC = () => {
         {/* Days */}
         {days.map((d, i) => (
           <div key={i} className="bg-white dark:bg-[#1A2633] h-24 p-2 relative group hover:bg-slate-50 dark:hover:bg-gray-800 transition-colors">
-            <span className={`text-sm ${d.month === 'prev' ? 'text-gray-400' : 'text-slate-900 font-medium dark:text-white'}`}>
+            <span className={`text-sm ${d.month === 'prev' || d.month === 'next' ? 'text-gray-400' : 'text-slate-900 font-medium dark:text-white'}`}>
               {d.day}
             </span>
             
             {d.content?.type === 'checked-in' && (
               <div className="absolute bottom-1 left-1 right-1 bg-green-100 text-green-800 text-[10px] font-bold px-1 py-0.5 rounded truncate">
-                {d.content.label}
+                Check-in
               </div>
             )}
 
-            {d.content?.type === 'guest' && (
+            {d.content?.type === 'guest' && d.content?.guestName && (
               <>
                 <div className="absolute top-1 right-1 size-2 rounded-full bg-orange-500"></div>
                 <div className="absolute bottom-1 left-1 right-1 bg-orange-100 text-orange-800 text-[10px] font-bold px-1 py-0.5 rounded truncate border-l-2 border-orange-500">
-                  {d.content.name}
+                  {d.content.guestName}
                 </div>
               </>
             )}
           </div>
         ))}
-        {/* Fill remaining cells */}
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={`empty-${i}`} className="bg-white dark:bg-[#1A2633] h-24 p-2 group hover:bg-slate-50 dark:hover:bg-gray-800"></div>
-        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="mt-4 flex flex-wrap gap-4 text-xs">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-green-100 border-2 border-green-500 rounded"></div>
+          <span className="text-gray-600 dark:text-gray-400">Check-in</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-orange-100 border-2 border-orange-500 rounded"></div>
+          <span className="text-gray-600 dark:text-gray-400">Đang thuê</span>
+        </div>
       </div>
     </div>
   );
