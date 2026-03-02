@@ -10,6 +10,9 @@ interface BookingWidgetProps {
   cleaningFee?: number;
   serviceFee?: number;
   property: PropertyDto;
+  initialCheckIn?: string;
+  initialCheckOut?: string;
+  initialGuests?: number;
 }
 
 const BookingWidget: React.FC<BookingWidgetProps> = ({
@@ -18,7 +21,10 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({
   totalReviews,
   cleaningFee = 0,
   serviceFee = 0,
-  property
+  property,
+  initialCheckIn,
+  initialCheckOut,
+  initialGuests
 }) => {
   const navigate = useNavigate();
   const guestPickerRef = useRef<HTMLDivElement>(null);
@@ -43,6 +49,29 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({
     : 0;
   const subtotal = pricePerNight * nights;
   const total = subtotal + cleaningFee + serviceFee;
+
+  // Initialize with values from search params (one time only)
+  useEffect(() => {
+    if (initialCheckIn) {
+      // Parse as local date to avoid timezone issues
+      // Format: YYYY-MM-DD
+      const [year, month, day] = initialCheckIn.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
+      setCheckInDateObj(date);
+      setCheckInDate(initialCheckIn);
+    }
+    if (initialCheckOut) {
+      // Parse as local date to avoid timezone issues
+      const [year, month, day] = initialCheckOut.split('-').map(Number);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
+      setCheckOutDateObj(date);
+      setCheckOutDate(initialCheckOut);
+    }
+    if (initialGuests && initialGuests > 0) {
+      setNumAdults(initialGuests);
+      setNumGuests(initialGuests);
+    }
+  }, [initialCheckIn, initialCheckOut, initialGuests]);
 
   useEffect(() => {
     setNumGuests(numAdults + numChildren);
@@ -302,8 +331,8 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({
         <div className="border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-6 bg-white dark:bg-[#1A2633]">
           <div className="flex justify-between items-end mb-5">
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-[#0d141b] dark:text-white">${pricePerNight}</span>
-              <span className="text-gray-500 text-sm">night</span>
+              <span className="text-2xl font-bold text-[#0d141b] dark:text-white">{pricePerNight?.toLocaleString('vi-VN')}đ</span>
+              <span className="text-gray-500 text-sm">/night</span>
             </div>
             <div className="flex items-center gap-1 text-sm font-semibold">
               <span className="material-symbols-outlined text-[16px] filled">star</span>

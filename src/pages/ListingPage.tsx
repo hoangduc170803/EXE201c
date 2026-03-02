@@ -1,20 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { api, PropertyDto } from '@/services/api';
 import ListingHeader from '@/components/listing/ListingHeader';
 import ListingTitle from '@/components/listing/ListingTitle';
 import HeroGallery from '@/components/listing/HeroGallery';
 import ListingInfo from '@/components/listing/ListingInfo';
 import BookingWidget from '@/components/listing/BookingWidget';
+import ContactWidget from '@/components/listing/ContactWidget';
 import ReviewsSection from '@/components/listing/ReviewsSection';
 import HostProfile from '@/components/listing/HostProfile';
 import ListingFooter from '@/components/listing/ListingFooter';
 
 const ListingPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const [property, setProperty] = useState<PropertyDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Extract search criteria from URL params
+  const checkInParam = searchParams.get('checkIn');
+  const checkOutParam = searchParams.get('checkOut');
+  const guestsParam = searchParams.get('guests');
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -25,8 +32,8 @@ const ListingPage: React.FC = () => {
 
         // Since api.getPropertyById expects a number, convert id
         // Ensure id is a number or handle error
-        const propertyId = parseInt(id, 10);
-        if (isNaN(propertyId)) {
+        const propertyId = Number.parseInt(id, 10);
+        if (Number.isNaN(propertyId)) {
           throw new Error('Invalid property ID');
         }
 
@@ -71,19 +78,29 @@ const ListingPage: React.FC = () => {
       <main className="layout-container flex flex-col items-center py-6 md:py-10 px-4 md:px-10 lg:px-20">
         <div className="layout-content-container flex flex-col max-w-[1280px] w-full flex-1">
           <ListingTitle property={property} />
+          {/* HeroGallery now supports images, videos, and 360 videos */}
           <HeroGallery images={property.images} />
 
           {/* MainContent Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 relative">
             <ListingInfo property={property} />
-          <BookingWidget
-            pricePerNight={property.pricePerNight}
-            rating={property.averageRating}
-            totalReviews={property.totalReviews}
-            cleaningFee={property.cleaningFee}
-            serviceFee={property.serviceFee}
-            property={property}
-          />
+
+            {/* Show ContactWidget for long-term rentals, BookingWidget for short-term */}
+            {property.rentalType === 'LONG_TERM' ? (
+              <ContactWidget property={property} />
+            ) : (
+              <BookingWidget
+                pricePerNight={property.pricePerNight}
+                rating={property.averageRating}
+                totalReviews={property.totalReviews}
+                cleaningFee={property.cleaningFee}
+                serviceFee={property.serviceFee}
+                property={property}
+                initialCheckIn={checkInParam || undefined}
+                initialCheckOut={checkOutParam || undefined}
+                initialGuests={guestsParam ? Number.parseInt(guestsParam, 10) : undefined}
+              />
+            )}
           </div>
 
           <ReviewsSection
@@ -93,9 +110,9 @@ const ListingPage: React.FC = () => {
 
           {/* Map Section */}
           <div className="py-8 border-t border-gray-200 dark:border-gray-700" id="location">
-            <h2 className="text-2xl font-bold text-[#0d141b] dark:text-white mb-2">
-              Where you'll be
-            </h2>
+            {/*<h2 className="text-2xl font-bold text-[#0d141b] dark:text-white mb-2">*/}
+            {/*  {isLongTerm ? 'Vị trí phòng trọ' : 'Where you\'ll be'}*/}
+            {/*</h2>*/}
             <p className="text-gray-600 dark:text-gray-400 mb-6">{property.city}, {property.country}</p>
             <div className="w-full h-[480px] rounded-xl overflow-hidden bg-gray-100 relative group">
               <div

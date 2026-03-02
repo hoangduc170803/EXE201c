@@ -13,22 +13,22 @@ const Header: React.FC = () => {
         <Link to="/" className="flex items-center gap-3 cursor-pointer">
           <div className="flex items-center justify-center text-primary">
             <span className="material-symbols-outlined !text-[32px] font-bold">
-              travel_explore
+              home
             </span>
           </div>
           <h2 className="text-xl font-bold tracking-tight text-[#0d141b] dark:text-white">
-            StayEase
+            HolaRent
           </h2>
         </Link>
 
         {/* Desktop Search (Collapsed State) */}
         <div className="hidden lg:flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow py-2.5 px-4 gap-4 cursor-pointer">
-          <button className="text-sm font-medium pl-2">Anywhere</button>
+          <button className="text-sm font-medium pl-2">Tìm phòng trọ</button>
           <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600"></div>
-          <button className="text-sm font-medium">Any week</button>
+          <button className="text-sm font-medium">Mức giá</button>
           <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600"></div>
           <button className="text-sm text-gray-500 dark:text-gray-400 font-normal pr-2 flex items-center gap-2">
-            Add guests
+            Loại phòng
             <div className="bg-primary text-white p-1.5 rounded-full flex items-center justify-center">
               <span className="material-symbols-outlined !text-[14px]">
                 search
@@ -45,7 +45,7 @@ const Header: React.FC = () => {
               location.pathname === '/host' ? 'text-primary' : ''
             }`}
           >
-            Become a Host
+            Cho thuê phòng trọ
           </Link>
           <button className="hidden md:flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
             <span className="material-symbols-outlined !text-[20px]">
@@ -114,17 +114,17 @@ const Header: React.FC = () => {
                 {!isAuthenticated ? (
                   <>
                     <Link to="/auth" className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                      Log in
+                      Đăng nhập
                     </Link>
                     <Link to="/auth" className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                      Sign up
+                      Đăng ký
                     </Link>
                   </>
                 ) : (
                   <>
                     <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                       <span className="material-symbols-outlined !text-[16px]">person</span>
-                      My Profile
+                      Tài khoản
                     </Link>
                     <Link to="/profile?tab=bookings" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                       <span className="material-symbols-outlined !text-[16px]">calendar_month</span>
@@ -137,12 +137,12 @@ const Header: React.FC = () => {
                     <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
                     <Link to="/messages" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                       <span className="material-symbols-outlined !text-[16px]">chat_bubble</span>
-                      Messages
+                      Tin nhắn
                     </Link>
                     {user?.roles?.includes('ROLE_HOST') && (
                       <Link to="/host" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                         <span className="material-symbols-outlined !text-[16px]">home_work</span>
-                        Host Portal
+                        Quản lý phòng trọ
                       </Link>
                     )}
                     <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
@@ -155,7 +155,7 @@ const Header: React.FC = () => {
                       className="flex items-center gap-3 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400"
                     >
                       <span className="material-symbols-outlined !text-[16px]">logout</span>
-                      Log out
+                      Đăng xuất
                     </button>
                   </>
                 )}

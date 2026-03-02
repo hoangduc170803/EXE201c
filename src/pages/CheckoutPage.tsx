@@ -209,15 +209,58 @@ const CheckoutPage: React.FC = () => {
               </div>
 
               {paymentMethod === 'QR_CODE' && (
-                <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
-                  <div className="w-48 h-48 mx-auto bg-white p-4 rounded-lg mb-2">
-                    <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center">
-                      <span className="material-symbols-outlined text-6xl text-gray-400">qr_code_scanner</span>
+                <div className="mt-4 p-4 bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg text-center border border-green-200 dark:border-green-800">
+                  <div className="bg-white rounded-xl shadow-lg p-6 mx-auto max-w-sm">
+                    {/* Vietcombank Logo */}
+                    <div className="mb-4">
+                    </div>
+
+                    {/* QR Code Image */}
+                    <div className="mb-4">
+                      <img
+                        src="https://img.vietqr.io/image/970436-1031423205-compact2.jpg?amount=0&addInfo=STAYEASE%20BOOKING&accountName=NGUYEN%20TIEN%20DUNG"
+                        alt="Vietcombank QR Code"
+                        className="w-full h-auto rounded-lg"
+                        onError={(e) => {
+                          // Fallback if image fails to load
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          const parent = (e.target as HTMLElement).parentElement;
+                          if (parent) {
+                            parent.innerHTML = '<div class="w-48 h-48 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center"><span class="material-symbols-outlined text-6xl text-gray-400">qr_code_scanner</span></div>';
+                          }
+                        }}
+                      />
+                    </div>
+
+                    {/* Account Info */}
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center justify-center gap-2 text-gray-700 dark:text-gray-300">
+                        <span className="material-symbols-outlined text-[18px]">account_circle</span>
+                        <span className="font-semibold">NGUYEN TIEN DUNG</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400">
+                        <span className="material-symbols-outlined text-[18px]">credit_card</span>
+                        <span>1031423205</span>
+                      </div>
+                      <div className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs font-medium">
+                        <span className="material-symbols-outlined text-[14px]">verified</span>
+                        VietQR
+                      </div>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    QR Code for payment (Demo)
-                  </p>
+
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      Scan QR Code to pay
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      Use your banking app to scan and complete payment
+                    </p>
+                    <div className="flex items-center justify-center gap-2 mt-3">
+                      <img src="https://api.vietqr.io/img/VIETOR.png" alt="VietQR" className="h-6" />
+                      <img src="https://api.vietqr.io/img/NAPAS.png" alt="NAPAS" className="h-6" />
+                    </div>
+                  </div>
                 </div>
               )}
 

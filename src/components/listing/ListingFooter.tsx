@@ -23,7 +23,7 @@ const ListingFooter: React.FC = () => {
           )}
         </div>
         <div className="flex flex-col gap-3">
-          <h4 className="font-bold text-[#0d141b] dark:text-white">StayEase</h4>
+          <h4 className="font-bold text-[#0d141b] dark:text-white">Hola Rent</h4>
           {['Newsroom', 'New features', 'Careers', 'Investors'].map((link) => (
             <a key={link} className="text-gray-600 dark:text-gray-400 hover:underline" href="#">
               {link}
@@ -33,9 +33,9 @@ const ListingFooter: React.FC = () => {
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2 text-primary font-black text-xl mb-2">
             <span className="material-symbols-outlined">travel_explore</span>
-            <span>StayEase</span>
+            <span>Hola Rent</span>
           </div>
-          <p className="text-sm text-gray-500">© 2024 StayEase, Inc.</p>
+          <p className="text-sm text-gray-500">© 2024 Hola Rent, Inc.</p>
           <div className="flex gap-4 mt-2">
             <span className="material-symbols-outlined text-gray-600 cursor-pointer hover:text-primary">
               public
