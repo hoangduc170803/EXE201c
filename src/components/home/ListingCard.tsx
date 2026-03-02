@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Listing } from '@/types';
 
 interface ListingCardProps {
@@ -7,8 +7,37 @@ interface ListingCardProps {
 }
 
 const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
+  const [searchParams] = useSearchParams();
+
+  // Determine if this is a long-term rental
+  const isLongTerm = listing.rentalType === 'LONG_TERM';
+
+  // Build URL with search criteria
+  const buildListingUrl = () => {
+    const url = `/listing/${listing.id}`;
+    const params = new URLSearchParams();
+
+    // Get search params from current URL
+    const checkIn = searchParams.get('checkIn');
+    const checkOut = searchParams.get('checkOut');
+    const guests = searchParams.get('guests');
+
+    // Add them to listing URL if they exist
+    if (checkIn) params.append('checkIn', checkIn);
+    if (checkOut) params.append('checkOut', checkOut);
+    if (guests) params.append('guests', guests);
+
+    const queryString = params.toString();
+    return queryString ? `${url}?${queryString}` : url;
+  };
+
+  // Format price for display
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('vi-VN').format(price);
+  };
+
   return (
-    <Link to={`/listing/${listing.id}`} className="group cursor-pointer">
+    <Link to={buildListingUrl()} className="group cursor-pointer">
       <div className="relative aspect-square overflow-hidden rounded-xl bg-gray-200 mb-3">
         <img
           alt={listing.location}
@@ -26,6 +55,12 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
             Guest favorite
           </div>
         )}
+        {/* Long-term badge */}
+        {isLongTerm && (
+          <div className="absolute bottom-3 left-3 bg-primary/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-semibold text-white">
+            Thuê dài hạn
+          </div>
+        )}
       </div>
       <div className="flex justify-between items-start">
         <div>
@@ -38,10 +73,30 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing }) => {
           <span className="text-sm font-medium text-[#0d141b] dark:text-white">{listing.rating}</span>
         </div>
       </div>
-      <div className="mt-2 flex items-baseline gap-1">
-        <span className="font-bold text-[#0d141b] dark:text-white text-base">${listing.price}</span>
-        <span className="text-gray-500 dark:text-gray-400 text-sm">night</span>
-      </div>
+
+      {/* Conditional Price Display */}
+      {isLongTerm ? (
+        <div className="mt-2">
+          <div className="flex items-baseline gap-1">
+            <span className="font-bold text-[#0d141b] dark:text-white text-base">
+              {formatPrice(listing.pricePerMonth || 0)}đ
+            </span>
+            <span className="text-gray-500 dark:text-gray-400 text-sm">/tháng</span>
+          </div>
+          {listing.price > 0 && (
+            <div className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              ~{formatPrice(Math.round(listing.price))}đ/đêm
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mt-2 flex items-baseline gap-1">
+          <span className="font-bold text-[#0d141b] dark:text-white text-base">
+            {formatPrice(listing.price)}đ
+          </span>
+          <span className="text-gray-500 dark:text-gray-400 text-sm">/đêm</span>
+        </div>
+      )}
     </Link>
   );
 };

@@ -67,6 +67,9 @@ export interface PropertyImage {
   caption: string;
   displayOrder: number;
   isPrimary: boolean;
+  mediaType?: string; // 'IMAGE', 'VIDEO', 'VIDEO_360'
+  fileSize?: number;
+  duration?: number; // in seconds for videos
 }
 
 export interface CategoryDto {
@@ -89,6 +92,7 @@ export interface HostDto {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   avatarUrl: string;
   bio: string;
   isVerified: boolean;
@@ -99,11 +103,23 @@ export interface PropertyDto {
   title: string;
   description: string;
   propertyType: string;
+  rentalType: 'LONG_TERM' | 'SHORT_TERM'; // NEW: Rental type
   address: string;
   city: string;
   state: string;
   country: string;
+
+  // Short-term rental pricing
   pricePerNight: number;
+
+  // Long-term rental pricing (thuê trọ)
+  pricePerMonth?: number;
+  electricityCost?: string;
+  waterCost?: string;
+  internetCost?: string;
+  depositMonths?: number;
+  minimumLeaseMonths?: number;
+
   cleaningFee: number;
   serviceFee: number;
   maxGuests: number;
@@ -260,8 +276,178 @@ class ApiService {
     );
   }
 
+  async getLongTermProperties(
+    page = 0,
+    size = 12,
+    filters?: {
+      minPrice?: number;
+      maxPrice?: number;
+      city?: string;
+      categoryId?: number;
+      propertyTypes?: string[];
+      amenityIds?: number[];
+      minArea?: number;
+      maxArea?: number;
+    }
+  ) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      size: size.toString(),
+    });
+
+    if (filters?.minPrice) params.append('minPrice', filters.minPrice.toString());
+    if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice.toString());
+    if (filters?.city) params.append('city', filters.city);
+    if (filters?.categoryId) params.append('categoryId', filters.categoryId.toString());
+    if (filters?.minArea) params.append('minArea', filters.minArea.toString());
+    if (filters?.maxArea) params.append('maxArea', filters.maxArea.toString());
+
+    // Add property types as array
+    if (filters?.propertyTypes && filters.propertyTypes.length > 0) {
+      filters.propertyTypes.forEach(type => params.append('propertyType', type));
+    }
+
+    // Add amenity IDs as array
+    if (filters?.amenityIds && filters.amenityIds.length > 0) {
+      filters.amenityIds.forEach(id => params.append('amenityIds', id.toString()));
+    }
+
+    return this.request<ApiResponse<PageResponse<PropertyDto>>>(
+      `/properties/long-term?${params.toString()}`
+    );
+  }
+
+  async getShortTermProperties(
+    page = 0,
+    size = 12,
+    filters?: {
+      minPrice?: number;
+      maxPrice?: number;
+      city?: string;
+      propertyTypes?: string[];
+      amenityIds?: number[];
+      minGuests?: number;
+      checkIn?: string;
+      checkOut?: string;
+    }
+  ) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      size: size.toString(),
+    });
+
+    if (filters?.minPrice) params.append('minPrice', filters.minPrice.toString());
+    if (filters?.maxPrice) params.append('maxPrice', filters.maxPrice.toString());
+    if (filters?.city) params.append('city', filters.city);
+    if (filters?.minGuests) params.append('minGuests', filters.minGuests.toString());
+    if (filters?.checkIn) params.append('checkIn', filters.checkIn);
+    if (filters?.checkOut) params.append('checkOut', filters.checkOut);
+
+    // Add property types as array
+    if (filters?.propertyTypes && filters.propertyTypes.length > 0) {
+      filters.propertyTypes.forEach(type => params.append('propertyType', type));
+    }
+
+    // Add amenity IDs as array
+    if (filters?.amenityIds && filters.amenityIds.length > 0) {
+      filters.amenityIds.forEach(id => params.append('amenityIds', id.toString()));
+    }
+
+    return this.request<ApiResponse<PageResponse<PropertyDto>>>(
+      `/properties/short-term?${params.toString()}`
+    );
+  }
+
   async getDistinctCities() {
     return this.request<ApiResponse<string[]>>('/properties/cities');
+  }
+
+  async getMyProperties(page = 0, size = 12) {
+    return this.request<ApiResponse<PageResponse<PropertyDto>>>(
+      `/properties/my-properties?page=${page}&size=${size}`
+    );
+  }
+
+  async createProperty(data: {
+    title: string;
+    description: string;
+    propertyType: string;
+    rentalType?: 'SHORT_TERM' | 'LONG_TERM';
+    address: string;
+    city: string;
+    state?: string;
+    country: string;
+    zipCode?: string;
+    latitude?: number;
+    longitude?: number;
+    pricePerNight?: number;
+    pricePerMonth?: number;
+    electricityCost?: string;
+    waterCost?: string;
+    internetCost?: string;
+    cleaningFee?: number;
+    serviceFee?: number;
+    securityDeposit?: number;
+    depositMonths?: number;
+    minimumLeaseMonths?: number;
+    maxGuests: number;
+    bedrooms?: number;
+    beds?: number;
+    bathrooms?: number;
+    areaSqft?: number;
+    minNights?: number;
+    maxNights?: number;
+    leaseDuration?: number;
+    checkInTime?: string;
+    checkOutTime?: string;
+    houseRules?: string;
+    cancellationPolicy?: string;
+    isInstantBook?: boolean;
+    categoryId?: number;
+    amenityIds?: number[];
+    images?: Array<{ imageUrl: string; caption?: string; displayOrder?: number; isPrimary?: boolean }>;
+  }) {
+    return this.request<ApiResponse<PropertyDto>>('/properties', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteProperty(id: number) {
+    return this.request<ApiResponse<void>>(`/properties/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async updatePropertyStatus(id: number, status: 'ACTIVE' | 'PENDING' | 'INACTIVE') {
+    return this.request<ApiResponse<PropertyDto>>(`/properties/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  }
+
+  async updateProperty(id: number, data: Partial<{
+    title: string;
+    description: string;
+    propertyType: string;
+    address: string;
+    city: string;
+    state?: string;
+    country: string;
+    zipCode?: string;
+    pricePerNight: number;
+    cleaningFee?: number;
+    maxGuests: number;
+    bedrooms?: number;
+    beds?: number;
+    bathrooms?: number;
+    categoryId?: number;
+    amenityIds?: number[];
+  }>) {
+    return this.request<ApiResponse<PropertyDto>>(`/properties/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   }
 
   // Categories API
@@ -272,6 +458,11 @@ class ApiService {
   // Amenities API
   async getAmenities() {
     return this.request<ApiResponse<AmenityDto[]>>('/amenities');
+  }
+
+  // Property Types API
+  async getPropertyTypes() {
+    return this.request<ApiResponse<string[]>>('/properties/property-types');
   }
 
   // Filter Properties API
@@ -387,6 +578,97 @@ class ApiService {
     return this.request<ApiResponse<UserResponse>>('/users/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
+    });
+  }
+
+  // File Upload APIs
+  async uploadImage(file: File, onProgress?: (progress: number) => void) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.uploadFileWithProgress('/files/upload-image', formData, onProgress);
+  }
+
+  async uploadImages(files: File[], onProgress?: (progress: number) => void) {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+
+    return this.uploadFileWithProgress('/files/upload-images', formData, onProgress);
+  }
+
+  async uploadVideo(file: File, onProgress?: (progress: number) => void) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.uploadFileWithProgress('/files/upload-video', formData, onProgress);
+  }
+
+  async upload360Video(file: File, onProgress?: (progress: number) => void) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.uploadFileWithProgress('/files/upload-video-360', formData, onProgress);
+  }
+
+  async getUploadConfig() {
+    return this.request<ApiResponse<{
+      cloudinaryEnabled: boolean;
+      maxImageSize: string;
+      maxVideoSize: string;
+      supportedImageFormats: string[];
+      supportedVideoFormats: string[];
+      maxImagesPerProperty: number;
+      maxVideosPerProperty: number;
+    }>>('/files/config');
+  }
+
+  private async uploadFileWithProgress(
+    endpoint: string,
+    formData: FormData,
+    onProgress?: (progress: number) => void
+  ): Promise<any> {
+    const token = localStorage.getItem('token');
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable && onProgress) {
+          const percentComplete = (e.loaded / e.total) * 100;
+          onProgress(Math.round(percentComplete));
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch (e) {
+            reject(new Error('Failed to parse response'));
+          }
+        } else {
+          try {
+            const errorResponse = JSON.parse(xhr.responseText);
+            reject(new Error(errorResponse.message || 'Upload failed'));
+          } catch (e) {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('Network error during upload'));
+      });
+
+      xhr.open('POST', `${this.baseUrl}${endpoint}`);
+
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
+      xhr.send(formData);
     });
   }
 }

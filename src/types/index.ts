@@ -1,5 +1,9 @@
 import React from 'react';
 
+// Rental Types for Dual-Mode System
+export type RentalType = 'LONG_TERM' | 'SHORT_TERM';
+export type RentalMode = 'long-term' | 'short-term'; // For UI state
+
 // Home Page Types (Updated from staynext(1))
 export interface Listing {
   id: string;
@@ -9,6 +13,8 @@ export interface Listing {
   dates: string;
   rating: number;
   price: number;
+  rentalType?: RentalType; // NEW
+  pricePerMonth?: number;   // NEW
   isGuestFavorite?: boolean;
 }
 
@@ -215,11 +221,14 @@ export interface PropertyFilter {
   minPrice?: number;
   maxPrice?: number;
   propertyType?: 'ENTIRE_PLACE' | 'PRIVATE_ROOM' | 'SHARED_ROOM';
+  propertyTypes?: string[]; // NEW: For filtering multiple property types (APARTMENT, STUDIO, HOUSE)
   amenityIds?: number[];
   city?: string;
   isInstantBook?: boolean;
   freeCancellation?: boolean;
   minGuests?: number;
+  minArea?: number; // NEW: For long-term rentals (sqft)
+  maxArea?: number; // NEW: For long-term rentals (sqft)
   checkIn?: string;
   checkOut?: string;
 }
@@ -232,10 +241,20 @@ export interface GuestCount {
 }
 
 export interface SearchCriteria {
+  rentalMode?: RentalMode; // NEW: 'long-term' or 'short-term'
   location: string;
-  checkIn: Date | null;
-  checkOut: Date | null;
-  guests: GuestCount;
+
+  // For short-term rental
+  checkIn?: Date | null;
+  checkOut?: Date | null;
+  guests?: GuestCount;
+
+  // For long-term rental
+  priceRange?: {
+    min?: number;
+    max?: number;
+  };
+  roomType?: 'single' | 'double' | 'loft' | 'studio' | 'apartment';
 }
 
 export interface MapMarkerData {

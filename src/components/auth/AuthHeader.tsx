@@ -9,7 +9,7 @@ const AuthHeader: React.FC = () => {
           <span className="material-symbols-outlined !text-3xl select-none">travel_explore</span>
         </div>
         <h2 className="text-[#0d141b] dark:text-white text-xl font-bold leading-tight tracking-[-0.015em]">
-          StayEase
+            Hola Rent
         </h2>
       </Link>
 

@@ -1,70 +1,57 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import HostSidebar from '@/components/host/HostSidebar';
 import HostHeader from '@/components/host/HostHeader';
 import HostPropertyCard from '@/components/host/HostPropertyCard';
 import { HostProperty, TabType } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
+import { api, PropertyDto } from '@/services/api';
 
-const properties: HostProperty[] = [
-  {
-    id: '1',
-    title: 'Sunny Studio District 1',
-    location: 'Ho Chi Minh City',
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDoZlwfjfoajsr4mFZVVhuAEosSXDnaSKRR0TVgN3h-GnlHkt3oyP1fUbalfff2zf2ehJnnxS7H1WVwEdinIUV5jLIDE653NALNvQpP_IVM75cpUeOpiL7ydqAoPRm3e2oIn4_yLstHhypfZNI3IiqT8sslBhOdyjdblCPxEt9hVvCysvkgyc5Y7dBTDTu_RWSnzRBe-UQXQ2XuW7KLWyB5wQtsgc0O-ce2vgOApVV9R2m5a9W30Vjkz8ikBkubJho3nrJvLtyjXoM',
-    status: 'Active',
-    price: 1500000,
-    currency: 'VND',
-    rating: 4.8,
-    upcomingBookings: 4,
-    views: 1200,
-    isPriceSet: true
-  },
-  {
-    id: '2',
-    title: 'Luxury Villa Ocean View',
-    location: 'Da Nang',
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAWJvPxEtkNBq5LcPNgSonlDL1e-zuYvYzeRW7WWCqCOYDxlbtNU1rU125fyaiKVdv0r2woLj8NWRbIZYQXPd5PZyM_Wp87FDBXJgL7mp3GNwWUvcElwR0ccazkuBXt1IXCIxGqS1K3z0_Uy-6aaCS7aO0fXT9b9IjaCMA598bXHqn51ZmX_zqBNsTrgI8goxD5KUdciMrJ7ccRGQao9IpbB4U2OXp4Yo4hjGhga7wffUSRtSOpTJTcEAalfzAfS1oR3LZyb_r9CBQ',
-    status: 'Active',
-    price: 5200000,
-    currency: 'VND',
-    rating: 5.0,
-    upcomingBookings: 2,
-    views: 3400,
-    isPriceSet: true
-  },
-  {
-    id: '3',
-    title: 'Hanoi Old Quarter Loft',
-    location: 'Hanoi',
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCtddnXsf7DjFev4yuUER-IpCnNGA7ok3d0Xsi9Vc5GUDIheWiYGAq8ntd9DIhrwFQUClVqFBNpShf-0cl9dS2hB5DHWBvAxdeUSXhGYgjkCkaz4XjkhDFvFAtru7vn6_1rHZ0q1y4NfCA8szSt6iW4y9Yb5yfJSnXLp_OmDlhh9NGBLqM0WJQX9bHjh8mj4YdKhBo_SNOBemM_S5pqZuV9kcyrkiolpuEJLROu8p0sn1pS6QHB0fxD9lc6u4-lIuwiz0viw674d_w',
-    status: 'Draft',
-    price: undefined,
-    currency: 'VND',
-    rating: undefined,
-    upcomingBookings: 0,
-    views: 0,
-    isPriceSet: false
-  },
-  {
-    id: '4',
-    title: 'Spacious 3BR Family Home',
-    location: 'District 7, HCMC',
-    imageUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB4E5-jl2i6yCHQKJrG73c78RN-wzKjq1Mj0yIJCPgjUTY_EM28C85szgfYjMYr7o9LqZZouju4h7JdTFTYXUw3mGTR4r9C3QVC7n701SDIaztGLazvqXKWYdUDwGht65I2JM_moyEBn4a0Dykhcralmv-KM0LFqeN7maughp2c0oQr717tBq7HOAhXS2PtWbO1QQnpe_3sQohjfZFjj1yRv5O5WVwaZYdRVzyj84eMW545L9JUw-sb7mDToDynJmKFgp4x_b6tt94',
-    status: 'Active',
-    price: 2800000,
-    currency: 'VND',
-    rating: 4.5,
-    upcomingBookings: 1,
-    views: 850,
-    isPriceSet: true
-  }
-];
 
 const HostPortalPage: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>('All Listings');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [properties, setProperties] = useState<HostProperty[]>([]);
+  const [loadingProperties, setLoadingProperties] = useState(true);
   const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (user && (user.isHost || user.roles?.includes('ROLE_HOST'))) {
+      loadProperties();
+    }
+  }, [user]);
+
+  const loadProperties = async () => {
+    setLoadingProperties(true);
+    try {
+      const response = await api.getMyProperties(0, 100);
+      if (response.success) {
+        const mappedProperties: HostProperty[] = response.data.content.map(convertPropertyDtoToHostProperty);
+        setProperties(mappedProperties);
+      }
+    } catch (error) {
+      console.error('Failed to load properties:', error);
+    } finally {
+      setLoadingProperties(false);
+    }
+  };
+
+  const convertPropertyDtoToHostProperty = (dto: PropertyDto): HostProperty => {
+    return {
+      id: String(dto.id),
+      title: dto.title,
+      location: `${dto.city}, ${dto.country}`,
+      imageUrl: dto.primaryImageUrl || dto.images?.[0]?.imageUrl || '',
+      status: dto.status === 'ACTIVE' ? 'Active' : dto.status === 'PENDING' ? 'Draft' : 'Archived',
+      price: dto.pricePerNight,
+      currency: 'VND',
+      rating: dto.averageRating,
+      upcomingBookings: 0, // This would come from bookings API
+      views: dto.viewCount,
+      isPriceSet: dto.pricePerNight > 0,
+    };
+  };
 
   // Redirect if not authenticated or not a host
   if (loading) {
@@ -116,11 +103,8 @@ const HostPortalPage: React.FC = () => {
   });
 
   const getCount = (type: TabType) => {
-    if (type === 'All Listings') return 12;
-    if (type === 'Active') return 8;
-    if (type === 'Draft') return 2;
-    if (type === 'Archived') return 2;
-    return 0;
+    if (type === 'All Listings') return properties.length;
+    return properties.filter(p => p.status === type).length;
   };
 
   return (
@@ -151,7 +135,10 @@ const HostPortalPage: React.FC = () => {
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">My Properties</h1>
                 <p className="text-slate-500 dark:text-slate-400 mt-1">Manage your listings and view booking performance.</p>
               </div>
-              <button className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-blue-600 text-white font-medium px-5 py-2.5 rounded-lg transition-colors shadow-sm hover:shadow-md">
+              <button
+                  onClick={() => navigate('/host/add-property')}
+                className="inline-flex items-center justify-center gap-2 bg-primary hover:bg-blue-600 text-white font-medium px-5 py-2.5 rounded-lg transition-colors shadow-sm hover:shadow-md"
+              >
                 <span className="material-symbols-outlined text-[20px]">add</span>
                 <span>Add New Listing</span>
               </button>
@@ -189,18 +176,48 @@ const HostPortalPage: React.FC = () => {
 
             {/* Property Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-6">
-              {filteredProperties.map(property => (
-                <HostPropertyCard key={property.id} property={property} />
-              ))}
-              
-              {/* Add New Property Placeholder */}
-              <button className="group flex flex-col items-center justify-center bg-slate-50 dark:bg-[#1a2632]/50 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-primary dark:hover:border-primary hover:bg-slate-100 dark:hover:bg-[#1a2632] transition-all duration-300 min-h-[340px]">
-                <div className="bg-primary/10 text-primary p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
-                  <span className="material-symbols-outlined text-[32px]">add_home</span>
+              {loadingProperties ? (
+                <div className="col-span-full flex items-center justify-center py-12">
+                  <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add New Property</h3>
-                <p className="text-sm text-slate-500 text-center px-8 mt-2">Create a new listing to start earning from your space.</p>
-              </button>
+              ) : filteredProperties.length > 0 ? (
+                <>
+                  {filteredProperties.map(property => (
+                    <HostPropertyCard
+                      key={property.id}
+                      property={property}
+                      onRefresh={loadProperties}
+                    />
+                  ))}
+
+                  {/* Add New Property Placeholder */}
+                  <button
+                    onClick={() => navigate('/host/add-property')}
+                    className="group flex flex-col items-center justify-center bg-slate-50 dark:bg-[#1a2632]/50 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-primary dark:hover:border-primary hover:bg-slate-100 dark:hover:bg-[#1a2632] transition-all duration-300 min-h-[340px]"
+                  >
+                    <div className="bg-primary/10 text-primary p-4 rounded-full mb-4 group-hover:scale-110 transition-transform">
+                      <span className="material-symbols-outlined text-[32px]">add_home</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white">Add New Property</h3>
+                    <p className="text-sm text-slate-500 text-center px-8 mt-2">Create a new listing to start earning from your space.</p>
+                  </button>
+                </>
+              ) : (
+                <div className="col-span-full flex flex-col items-center justify-center py-12">
+                  <div className="bg-primary/10 text-primary p-6 rounded-full mb-4">
+                    <span className="material-symbols-outlined text-[48px]">home_work</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No properties found</h3>
+                  <p className="text-slate-500 dark:text-slate-400 mb-4">Get started by adding your first property</p>
+                  <button
+                    onClick={() => navigate('/host/add-property')}
+                    className="inline-flex items-center gap-2 bg-primary hover:bg-blue-600 text-white font-medium px-5 py-2.5 rounded-lg transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">add</span>
+                    <span>Add Your First Property</span>
+                  </button>
+                </div>
+              )}
             </div>
             
             {/* Footer */}

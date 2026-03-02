@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 
 interface TypeFilterProps {
-  propertyType?: 'ENTIRE_PLACE' | 'PRIVATE_ROOM' | 'SHARED_ROOM';
-  onApply: (type?: 'ENTIRE_PLACE' | 'PRIVATE_ROOM' | 'SHARED_ROOM') => void;
+  selectedTypes: string[];
+  onApply: (types: string[]) => void;
 }
 
-const TypeFilterContent: React.FC<TypeFilterProps> = ({ propertyType, onApply }) => {
-  const [selected, setSelected] = useState(propertyType);
+const TypeFilterContent: React.FC<TypeFilterProps> = ({ selectedTypes, onApply }) => {
+  const [selected, setSelected] = useState<string[]>(selectedTypes);
 
   const options = [
     {
@@ -26,36 +26,51 @@ const TypeFilterContent: React.FC<TypeFilterProps> = ({ propertyType, onApply })
     }
   ] as const;
 
+  const toggleType = (value: string) => {
+    setSelected(prev =>
+      prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+    );
+  };
+
   const handleApply = () => {
     onApply(selected);
   };
 
   const handleClear = () => {
-    setSelected(undefined);
-    onApply(undefined);
+    setSelected([]);
   };
 
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold text-base mb-3">Type of place</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-base">Type of place</h3>
+        {selected.length > 0 && (
+          <button
+            onClick={handleClear}
+            className="text-xs text-gray-500 hover:text-gray-700 underline"
+          >
+            Clear ({selected.length})
+          </button>
+        )}
+      </div>
 
       <div className="space-y-2">
         {options.map((option) => (
           <label
             key={option.value}
             className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-              selected === option.value 
+              selected.includes(option.value)
                 ? 'border-black dark:border-white bg-gray-50 dark:bg-gray-700' 
                 : 'border-gray-200 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
             }`}
           >
             <input
-              type="radio"
-              name="propertyType"
-              value={option.value}
-              checked={selected === option.value}
-              onChange={(e) => setSelected(e.target.value as typeof option.value)}
-              className="mt-1"
+              type="checkbox"
+              checked={selected.includes(option.value)}
+              onChange={() => toggleType(option.value)}
+              className="mt-1 w-4 h-4 rounded text-primary focus:ring-primary"
             />
             <div className="flex-1">
               <div className="font-medium text-sm">{option.label}</div>
@@ -67,20 +82,12 @@ const TypeFilterContent: React.FC<TypeFilterProps> = ({ propertyType, onApply })
         ))}
       </div>
 
-      <div className="flex gap-2 pt-2">
-        <button
-          onClick={handleClear}
-          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
-        >
-          Clear
-        </button>
-        <button
-          onClick={handleApply}
-          className="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
-        >
-          Apply
-        </button>
-      </div>
+      <button
+        onClick={handleApply}
+        className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
+      >
+        Apply{selected.length > 0 && ` (${selected.length})`}
+      </button>
     </div>
   );
 };

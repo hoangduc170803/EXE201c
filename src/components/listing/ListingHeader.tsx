@@ -10,7 +10,7 @@ const ListingHeader: React.FC = () => {
             <span className="material-symbols-outlined text-4xl">travel_explore</span>
           </div>
           <h2 className="text-[#0d141b] dark:text-white text-xl font-black leading-tight tracking-[-0.015em] hidden md:block">
-            StayEase
+              Hola Rent
           </h2>
         </Link>
         
