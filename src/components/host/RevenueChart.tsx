@@ -1,40 +1,318 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { api } from '@/services/api';
+import type { MonthlyRevenueResponse } from '@/services/api';
 
 const RevenueChart: React.FC = () => {
-  // Mock data for chart columns (height percentage)
-  const data = [40, 65, 45, 80, 55, 70, 40, 60, 75, 50, 85, 95];
-  const months = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'];
+  const [monthlyData, setMonthlyData] = useState<MonthlyRevenueResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    fetchMonthlyRevenue();
+  }, [selectedYear]);
+
+  const fetchMonthlyRevenue = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await api.getMonthlyRevenue(selectedYear);
+
+      if (response.data && Array.isArray(response.data)) {
+        setMonthlyData(response.data);
+      } else {
+        setMonthlyData([]);
+      }
+    } catch (error) {
+      console.error('Error fetching monthly revenue:', error);
+      setError(error instanceof Error ? error.message : 'Không thể tải dữ liệu doanh thu');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate max revenue for scaling
+  const maxRevenue = monthlyData.length > 0
+    ? Math.max(...monthlyData.map(m => m.revenue), 1)
+    : 1;
+
+  // Format currency for tooltip - detailed version
+  const formatCurrency = (amount: number) => {
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1)}M VND`;
+    } else if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(0)}K VND`;
+    }
+    return `${amount.toFixed(0)} VND`;
+  };
+
+  // Format currency with full details for tooltip
+  const formatDetailedCurrency = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
+
+  // Calculate MoM (Month over Month) change
+  const calculateMoMChange = (currentIndex: number): { percentChange: number; isIncrease: boolean; previousRevenue: number } | null => {
+    if (currentIndex === 0) return null; // No previous month for first month
+
+    const currentRevenue = monthlyData[currentIndex].revenue;
+    const previousRevenue = monthlyData[currentIndex - 1].revenue;
+
+    if (previousRevenue === 0) {
+      if (currentRevenue > 0) {
+        return { percentChange: 100, isIncrease: true, previousRevenue };
+      }
+      return null;
+    }
+
+    const percentChange = ((currentRevenue - previousRevenue) / previousRevenue) * 100;
+    return {
+      percentChange: Math.abs(percentChange),
+      isIncrease: percentChange >= 0,
+      previousRevenue
+    };
+  };
+
+  if (loading) {
+    return (
+      <div className="h-full p-6 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <div className="h-6 w-40 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mb-2"></div>
+            <div className="h-4 w-32 bg-slate-200 dark:bg-slate-700 rounded animate-pulse"></div>
+          </div>
+        </div>
+        <div className="flex items-end justify-between h-64 gap-2 sm:gap-4 mt-4">
+          {new Array(12).fill(0).map((_, i) => (
+            <div key={`skeleton-${i}`} className="w-full bg-slate-200 dark:bg-slate-700 rounded-t-lg animate-pulse" style={{ height: `${Math.random() * 80 + 20}%` }}></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-full p-6 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Biểu đồ doanh thu</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Tổng quan năm {selectedYear}</p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <span className="material-symbols-outlined text-red-500 !text-5xl mb-3">error</span>
+          <p className="text-slate-900 dark:text-white font-medium mb-2">Lỗi tải dữ liệu</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{error}</p>
+          <button
+            onClick={fetchMonthlyRevenue}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate total revenue to show in header
+  const totalRevenue = monthlyData.reduce((sum, m) => sum + (m.revenue || 0), 0);
+
+  // Calculate Y-axis labels - use actual max revenue with small padding
+  const getYAxisLabels = (): number[] => {
+    if (maxRevenue === 0) return [0];
+
+    // Add 10% padding to max value for better visualization
+    const maxWithPadding = maxRevenue * 1.1;
+
+    // Find a nice round number slightly above the padded max
+    const magnitude = Math.pow(10, Math.floor(Math.log10(maxWithPadding)));
+    const normalized = maxWithPadding / magnitude;
+
+    let maxRounded: number;
+    if (normalized <= 1) maxRounded = magnitude;
+    else if (normalized <= 2) maxRounded = 2 * magnitude;
+    else if (normalized <= 5) maxRounded = 5 * magnitude;
+    else maxRounded = 10 * magnitude;
+
+    // Generate 5 evenly spaced labels
+    return [
+      maxRounded,
+      maxRounded * 0.75,
+      maxRounded * 0.5,
+      maxRounded * 0.25,
+      0
+    ];
+  };
+
+  const formatYAxisValue = (value: number): string => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+    return value.toFixed(0);
+  };
+
+
+  const yAxisLabels = getYAxisLabels();
+  const yAxisMax = yAxisLabels[0]; // The maximum value on Y-axis
 
   return (
     <div className="h-full p-6 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm">
-      <div className="flex items-center justify-between mb-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">Biểu đồ doanh thu</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Tổng quan năm 2024</p>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Biểu đồ doanh thu</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Tổng quan năm {selectedYear}
+            {totalRevenue > 0 && (
+              <span className="ml-2 text-emerald-600 dark:text-emerald-400 font-semibold">
+                • {formatCurrency(totalRevenue)}
+              </span>
+            )}
+          </p>
         </div>
-        <button className="text-slate-400 hover:text-slate-600 transition-colors">
-          <span className="material-symbols-outlined">more_horiz</span>
-        </button>
+
+        {/* Year selector with better styling */}
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(Number(e.target.value))}
+          className="text-sm border border-slate-300 dark:border-slate-600 rounded-lg px-4 py-2 bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent shadow-sm hover:border-slate-400 transition-colors cursor-pointer"
+        >
+          {[2024, 2025, 2026].map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
       </div>
 
-      <div className="flex items-end justify-between h-64 gap-2 sm:gap-4 mt-4">
-        {data.map((height, i) => (
-          <div key={i} className="flex flex-col items-center gap-3 group w-full">
-            <div className="relative w-full bg-slate-100 dark:bg-slate-700 rounded-t-lg h-full overflow-hidden flex items-end">
-              <div 
-                className="w-full bg-primary/80 group-hover:bg-primary transition-all duration-300 rounded-t-sm"
-                style={{ height: `${height}%` }}
-              ></div>
-              
-              {/* Tooltip */}
-              <div className="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs py-1 px-2 rounded pointer-events-none transition-opacity whitespace-nowrap z-10">
-                {height}M VND
+      {monthlyData.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <span className="material-symbols-outlined text-slate-400 !text-5xl mb-3">analytics</span>
+          <p className="text-slate-900 dark:text-white font-medium mb-2">Chưa có dữ liệu</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Không có doanh thu trong năm {selectedYear}</p>
+        </div>
+      ) : (
+        <div className="relative">
+          {/* Chart container with horizontal grid lines */}
+          <div className="relative p-4">
+            <div className="flex gap-3">
+              {/* Y-axis labels */}
+              <div className="flex flex-col justify-between h-72 py-1 pr-3 relative z-10">
+                {yAxisLabels.map((value, index) => (
+                  <div key={`y-axis-${value}-${index}`} className="text-xs font-medium text-slate-600 dark:text-slate-400 text-right">
+                    {formatYAxisValue(value)}
+                  </div>
+                ))}
+              </div>
+
+              {/* Chart area with horizontal grid lines */}
+              <div className="flex-1 relative h-72">
+                {/* Horizontal grid lines */}
+                <div className="absolute inset-0 flex flex-col justify-between">
+                  {yAxisLabels.map((value, index) => (
+                    <div
+                      key={`grid-${value}-${index}`}
+                      className="border-t border-dashed border-slate-300 dark:border-slate-600"
+                    ></div>
+                  ))}
+                </div>
+
+                {/* Chart bars */}
+                <div className="relative h-full flex items-end justify-between gap-3">
+                  {monthlyData.map((monthData, index) => {
+                    // Calculate height based on Y-axis max
+                    const heightPercent = yAxisMax > 0 ? (monthData.revenue / yAxisMax) * 100 : 0;
+                    const hasRevenue = monthData.revenue > 0;
+                    const momChange = calculateMoMChange(index);
+
+                    return (
+                      <div key={`${monthData.year}-${monthData.month}`} className="flex-1 group relative" style={{height: '100%'}}>
+                        {/* Enhanced Hover tooltip with MoM comparison */}
+                        <div className="opacity-0 group-hover:opacity-100 absolute bottom-full mb-8 left-1/2 -translate-x-1/2 bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-white rounded-xl shadow-2xl transition-all duration-200 whitespace-nowrap z-50 pointer-events-none border border-slate-700 dark:border-slate-600 min-w-[200px]">
+                          <div className="p-3 space-y-2">
+                            {/* Month/Year */}
+                            <div className="flex items-center gap-2 pb-2 border-b border-slate-700 dark:border-slate-600">
+                              <span className="material-symbols-outlined text-emerald-400 !text-lg">calendar_today</span>
+                              <span className="font-bold text-sm">{monthData.monthName} {selectedYear}</span>
+                            </div>
+
+                            {/* Detailed Amount */}
+                            <div className="flex items-start gap-2">
+                              <span className="material-symbols-outlined text-emerald-400 !text-lg mt-0.5">payments</span>
+                              <div>
+                                <div className="text-xs text-slate-400">Doanh thu</div>
+                                <div className={`font-bold text-base ${hasRevenue ? 'text-emerald-300' : 'text-slate-400'}`}>
+                                  {hasRevenue ? formatDetailedCurrency(monthData.revenue) : 'Không có doanh thu'}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* MoM Change */}
+                            {hasRevenue && momChange && (
+                              <div className="flex items-start gap-2 pt-2 border-t border-slate-700 dark:border-slate-600">
+                                <span className={`material-symbols-outlined !text-lg mt-0.5 ${momChange.isIncrease ? 'text-green-400' : 'text-red-400'}`}>
+                                  {momChange.isIncrease ? 'trending_up' : 'trending_down'}
+                                </span>
+                                <div>
+                                  <div className="text-xs text-slate-400">So với tháng trước</div>
+                                  <div className={`font-bold text-sm ${momChange.isIncrease ? 'text-green-400' : 'text-red-400'}`}>
+                                    {momChange.isIncrease ? '+' : '-'}{momChange.percentChange.toFixed(1)}%
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* First month indicator */}
+                            {hasRevenue && !momChange && (
+                              <div className="flex items-start gap-2 pt-2 border-t border-slate-700 dark:border-slate-600">
+                                <span className="material-symbols-outlined text-blue-400 !text-lg mt-0.5">info</span>
+                                <div>
+                                  <div className="text-xs text-slate-400">Tháng đầu tiên</div>
+                                  <div className="text-sm text-blue-400">Không có dữ liệu so sánh</div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Tooltip arrow */}
+                          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-slate-800 dark:bg-slate-700 rotate-45 border-r border-b border-slate-700 dark:border-slate-600"></div>
+                        </div>
+
+                        {/* Bar - render with flex positioning */}
+                        <div className="h-full flex flex-col justify-end items-center">
+                          {hasRevenue && (
+                            <div
+                              className="w-full bg-gradient-to-t from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 rounded-t-md transition-all duration-500 ease-out shadow-lg relative"
+                              style={{ height: `${heightPercent}%` }}
+                            >
+                              {/* Shine effect */}
+                              <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-md"></div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Month label */}
+                        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2">
+                          <span className={`text-xs font-semibold whitespace-nowrap transition-colors ${
+                            hasRevenue 
+                              ? 'text-slate-700 dark:text-slate-300' 
+                              : 'text-slate-400 dark:text-slate-500'
+                          }`}>
+                            {monthData.monthName}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{months[i]}</span>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

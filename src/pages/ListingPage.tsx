@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { api, PropertyDto } from '@/services/api';
-import ListingHeader from '@/components/listing/ListingHeader';
 import ListingTitle from '@/components/listing/ListingTitle';
 import HeroGallery from '@/components/listing/HeroGallery';
 import ListingInfo from '@/components/listing/ListingInfo';
@@ -9,7 +8,6 @@ import BookingWidget from '@/components/listing/BookingWidget';
 import ContactWidget from '@/components/listing/ContactWidget';
 import ReviewsSection from '@/components/listing/ReviewsSection';
 import HostProfile from '@/components/listing/HostProfile';
-import ListingFooter from '@/components/listing/ListingFooter';
 
 const ListingPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -74,7 +72,6 @@ const ListingPage: React.FC = () => {
 
   return (
     <div className="page-transition">
-      <ListingHeader />
       <main className="layout-container flex flex-col items-center py-6 md:py-10 px-4 md:px-10 lg:px-20">
         <div className="layout-content-container flex flex-col max-w-[1280px] w-full flex-1">
           <ListingTitle property={property} />
@@ -132,7 +129,6 @@ const ListingPage: React.FC = () => {
           <HostProfile host={property.host} />
         </div>
       </main>
-      <ListingFooter />
     </div>
   );
 };

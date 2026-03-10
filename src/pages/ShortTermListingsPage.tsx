@@ -12,7 +12,6 @@ import type { PropertyFilter, Listing } from '@/types';
 const ShortTermListingsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [properties, setProperties] = useState<Listing[]>([]);
-  const [filters, setFilters] = useState<PropertyFilter>({});
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -31,37 +30,62 @@ const ShortTermListingsPage: React.FC = () => {
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-  // Helper function to format date
-  const formatDateToLocalString = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  // Helper function to parse filters from URL params
+  const getFiltersFromUrlParams = (params: URLSearchParams): PropertyFilter => {
+    const location = params.get('location');
+    const checkIn = params.get('checkIn');
+    const checkOut = params.get('checkOut');
+    const adults = params.get('adults');
+    const children = params.get('children');
+
+    const filters: PropertyFilter = {};
+    if (location) filters.city = location;
+
+    // Parse date strings (format: YYYY-MM-DD)
+    if (checkIn) {
+      filters.checkIn = checkIn;
+    }
+    if (checkOut) {
+      filters.checkOut = checkOut;
+    }
+
+    // Calculate total guests
+    const totalGuests = Number(adults || 0) + Number(children || 0);
+    if (totalGuests > 0) {
+      filters.minGuests = totalGuests;
+    }
+
+    console.log('ShortTermListingsPage: Parsed filters from URL', filters);
+    return filters;
   };
 
-  // Initialize filters from URL params
+  const [filters, setFilters] = useState<PropertyFilter>(() => getFiltersFromUrlParams(searchParams));
+
+  // Update filters when URL params change
   useEffect(() => {
-    const location = searchParams.get('location');
-    const checkIn = searchParams.get('checkIn');
-    const checkOut = searchParams.get('checkOut');
-    const adults = searchParams.get('adults');
-    const children = searchParams.get('children');
-
-    const initialFilters: PropertyFilter = {};
-    if (location) initialFilters.city = location;
-    if (checkIn) initialFilters.checkIn = formatDateToLocalString(new Date(checkIn));
-    if (checkOut) initialFilters.checkOut = formatDateToLocalString(new Date(checkOut));
-
-    const totalGuests = Number(adults || 0) + Number(children || 0);
-    if (totalGuests > 1) initialFilters.minGuests = totalGuests;
-
-    setFilters(initialFilters);
+    const newFilters = getFiltersFromUrlParams(searchParams);
+    console.log('ShortTermListingsPage: URL params changed, updating filters', newFilters);
+    setFilters(newFilters);
   }, [searchParams]);
 
   // Fetch properties whenever filters change
   const fetchProperties = useCallback(async (page = 0) => {
     setLoading(true);
     try {
+      console.log('ShortTermListingsPage: Fetching properties with filters', {
+        page,
+        filters: {
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+          city: filters.city,
+          propertyTypes: filters.propertyTypes,
+          amenityIds: filters.amenityIds,
+          minGuests: filters.minGuests,
+          checkIn: filters.checkIn,
+          checkOut: filters.checkOut,
+        }
+      });
+
       // Use dedicated short-term API endpoint
       const response = await api.getShortTermProperties(page, 12, {
         minPrice: filters.minPrice,
@@ -77,6 +101,7 @@ const ShortTermListingsPage: React.FC = () => {
       console.log('ShortTermListingsPage: API response', {
         success: response.success,
         dataLength: response.data?.content?.length || 0,
+        totalElements: response.data?.totalElements || 0,
       });
 
       if (response.success && response.data) {
@@ -169,8 +194,31 @@ const ShortTermListingsPage: React.FC = () => {
                 Short-term Stays
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
-                {properties.length} properties available
+                {loading ? 'Searching...' : `${properties.length} properties available`}
               </p>
+              {/* Show active search criteria */}
+              {(filters.city || filters.checkIn || filters.minGuests) && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {filters.city && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm">
+                      <span className="material-symbols-outlined !text-[16px]">location_on</span>
+                      {filters.city}
+                    </span>
+                  )}
+                  {filters.checkIn && filters.checkOut && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-sm">
+                      <span className="material-symbols-outlined !text-[16px]">calendar_month</span>
+                      {filters.checkIn} → {filters.checkOut}
+                    </span>
+                  )}
+                  {filters.minGuests && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-sm">
+                      <span className="material-symbols-outlined !text-[16px]">group</span>
+                      {filters.minGuests} guests
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             {hasActiveFilters() && (
               <button

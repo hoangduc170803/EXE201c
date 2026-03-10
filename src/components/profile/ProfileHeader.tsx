@@ -15,7 +15,7 @@ const ProfileHeader: React.FC = () => {
       <div className="flex items-center gap-8">
         <Link to="/" className="flex items-center gap-2 text-primary">
           <Globe className="w-8 h-8" strokeWidth={1.5} />
-          <h2 className="text-[#0d141b] text-xl font-bold leading-tight tracking-[-0.015em]">StayEase</h2>
+          <h2 className="text-[#0d141b] text-xl font-bold leading-tight tracking-[-0.015em]">HolaRent</h2>
         </Link>
         <div className="hidden md:flex items-center gap-9">
           <Link className="text-[#0d141b] text-sm font-medium leading-normal hover:text-primary transition-colors" to="/">Trang chủ</Link>

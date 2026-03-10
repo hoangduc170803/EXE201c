@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, CategoryDto, AmenityDto, ApiResponse } from '@/services/api';
+import { api, CategoryDto, AmenityDto, ApiResponse, packageApi, PostingPackageResponse } from '@/services/api';
 import {
   Building2, Home, ArrowLeft, ArrowRight, Check,
-  MapPin, Info, Camera, DollarSign, Sparkles
+  MapPin, Info, Camera, DollarSign, Sparkles, Zap, Crown, Star
 } from 'lucide-react';
 
 type RentalType = 'SHORT_TERM' | 'LONG_TERM';
@@ -19,6 +19,14 @@ const AddPropertyPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [uploadingImages, setUploadingImages] = useState(false);
+
+  // Package selection states
+  const [packages, setPackages] = useState<PostingPackageResponse[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState<PostingPackageResponse | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<string>('');
+  const [loadingPackages, setLoadingPackages] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [loadingWallet, setLoadingWallet] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -80,6 +88,47 @@ const AddPropertyPage: React.FC = () => {
       });
     };
   }, []);
+
+  // Load packages when user reaches step 6
+  useEffect(() => {
+    if (currentStep === 5) { // Step 6 (index 5)
+      loadPackages();
+      loadWalletBalance();
+    }
+  }, [currentStep]);
+
+  const loadPackages = async () => {
+    try {
+      setLoadingPackages(true);
+      const packagesData = await packageApi.getAllActivePackages();
+      setPackages(packagesData);
+    } catch (error) {
+      console.error('Failed to load packages:', error);
+      setErrorMessage('Không thể tải danh sách gói đăng tin');
+    } finally {
+      setLoadingPackages(false);
+    }
+  };
+
+  const loadWalletBalance = async () => {
+    try {
+      setLoadingWallet(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8080/api/wallet', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const walletData = await response.json();
+        setWalletBalance(walletData.balance || 0);
+      }
+    } catch (error) {
+      console.error('Failed to load wallet:', error);
+    } finally {
+      setLoadingWallet(false);
+    }
+  };
 
   const loadCategoriesAndAmenities = async () => {
     try {
@@ -271,7 +320,7 @@ const AddPropertyPage: React.FC = () => {
               img.imageUrl === imageData.imageUrl
                 ? {
                     ...img,
-                    imageUrl: uploadResult.data.url,
+                    imageUrl: uploadResult!.data.url,
                     uploading: false,
                     file: undefined, // Remove file object after upload
                   }
@@ -354,6 +403,22 @@ const AddPropertyPage: React.FC = () => {
     setSuccessMessage('');
 
     try {
+      // Validate package selection
+      if (!selectedPackage) {
+        setErrorMessage('Vui lòng chọn một gói đăng tin');
+        setLoading(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // Validate payment method if package is not free
+      if (selectedPackage.price > 0 && !paymentMethod) {
+        setErrorMessage('Vui lòng chọn phương thức thanh toán');
+        setLoading(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
       // Check if any images are still uploading
       const stillUploading = formData.images.some(img => img.uploading);
       if (stillUploading) {
@@ -398,13 +463,39 @@ const AddPropertyPage: React.FC = () => {
         submitData.pricePerNight = null as any;
       }
 
-      const response = await api.createProperty(submitData);
-      if (response.success) {
-        setSuccessMessage('🎉 Tạo tin đăng thành công! Đang chuyển hướng...');
-        setTimeout(() => {
-          navigate('/host');
-        }, 1500);
+      // Step 1: Create property
+      const propertyResponse = await api.createProperty(submitData);
+      if (!propertyResponse.success) {
+        throw new Error('Không thể tạo tin đăng');
       }
+
+      const propertyId = propertyResponse.data.id;
+
+      // Step 2: Create subscription
+      const subscriptionResponse = await packageApi.createSubscription({
+        propertyId: propertyId,
+        packageId: selectedPackage.id,
+        paymentMethod: selectedPackage.price === 0 ? 'FREE' : paymentMethod,
+        transactionNote: `Package: ${selectedPackage.name}`,
+      });
+
+      // If free package, confirm immediately
+      if (selectedPackage.price === 0) {
+        await packageApi.confirmPayment(subscriptionResponse.transactionId);
+        setSuccessMessage('🎉 Tạo tin đăng thành công! Tin của bạn đang được xét duyệt.');
+      } else {
+        setSuccessMessage(
+          `🎉 Tạo tin đăng thành công!\n\n` +
+          `Mã giao dịch: ${subscriptionResponse.transactionId}\n` +
+          `Vui lòng thanh toán ${selectedPackage.price.toLocaleString()} ₫ để kích hoạt tin đăng.\n\n` +
+          `Đang chuyển hướng...`
+        );
+      }
+
+      setTimeout(() => {
+        navigate('/host');
+      }, 3000);
+
     } catch (error: any) {
       setErrorMessage(error.message || 'Đã có lỗi xảy ra khi tạo tin đăng. Vui lòng thử lại.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1344,91 +1435,322 @@ const AddPropertyPage: React.FC = () => {
     </div>
   );
 
-  // Step 6: Payment Config (Demo)
+  // Step 6: Package Selection & Payment Config
   const renderPaymentConfig = () => (
-    <div className="space-y-6">
-      <div className="text-center py-8">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4">
-          <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center">
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-rose-500 to-orange-500 rounded-full mb-4">
+          <Crown className="w-10 h-10 text-white" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-2">
-          Gần hoàn thành rồi!
+        <h3 className="text-3xl font-bold text-gray-900 mb-2">
+          Chọn Gói Đăng Tin
         </h3>
-        <p className="text-gray-600 mb-6">
-          Xem lại thông tin và cấu hình thanh toán
+        <p className="text-gray-600 text-lg">
+          Lựa chọn gói phù hợp để tăng hiệu quả cho thuê
         </p>
-      </div>
 
-      {/* Summary Preview */}
-      <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
-        <h4 className="font-semibold text-gray-900 mb-4">Tóm tắt tin đăng</h4>
-
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Loại cho thuê:</span>
-            <span className="font-medium text-gray-900">
-              {rentalType === 'SHORT_TERM' ? 'Ngắn hạn' : 'Dài hạn'}
-            </span>
-          </div>
-
-          <div className="flex justify-between">
-            <span className="text-gray-600">Địa chỉ:</span>
-            <span className="font-medium text-gray-900">{formData.city || '(Chưa nhập)'}</span>
-          </div>
-
-          <div className="flex justify-between">
-            <span className="text-gray-600">Loại BĐS:</span>
-            <span className="font-medium text-gray-900">{formData.propertyType}</span>
-          </div>
-
-          <div className="flex justify-between">
-            <span className="text-gray-600">Diện tích:</span>
-            <span className="font-medium text-gray-900">{formData.areaSqft || 0} m²</span>
-          </div>
-
-          <div className="flex justify-between">
-            <span className="text-gray-600">Giá:</span>
-            <span className="font-medium text-rose-500 text-lg">
-              {rentalType === 'SHORT_TERM'
-                ? `${formData.pricePerNight?.toLocaleString()} VND/đêm`
-                : `${formData.pricePerMonth?.toLocaleString()} VND/tháng`
-              }
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Payment Config - Demo */}
-      <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-yellow-100 rounded-full mb-4">
-          <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        {/* Wallet Balance */}
+        <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg">
+          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
+          <span className="text-sm text-gray-600">Số dư ví:</span>
+          <span className="font-bold text-gray-900">{walletBalance.toLocaleString()} ₫</span>
         </div>
-        <h4 className="text-lg font-semibold text-gray-900 mb-2">
-          Cấu hình thanh toán
-        </h4>
-        <p className="text-gray-600 mb-4">
-          Tính năng này đang được phát triển
-        </p>
-        <p className="text-sm text-gray-500">
-          Bạn sẽ có thể cấu hình:<br/>
-          • Liên kết tài khoản ngân hàng<br/>
-          • Thiết lập phương thức thanh toán<br/>
-          • Cấu hình phí giao dịch
-        </p>
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-        <div className="flex">
-          <svg className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+      {/* Property Summary Card */}
+      <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
+        <div className="flex items-start gap-4">
+          {formData.images.length > 0 && (
+            <img
+              src={formData.images[0].imageUrl}
+              alt="Property"
+              className="w-24 h-24 object-cover rounded-xl shadow-md"
+            />
+          )}
+          <div className="flex-1">
+            <h4 className="font-bold text-gray-900 text-lg mb-2">
+              {formData.title || 'Chưa có tiêu đề'}
+            </h4>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-gray-500" />
+                <span className="text-gray-700">{formData.city || 'Chưa chọn'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-gray-500" />
+                <span className="text-gray-700">{formData.propertyType}</span>
+              </div>
+              <div className="text-gray-700">
+                <span className="font-medium">{formData.bedrooms}</span> phòng ngủ •
+                <span className="font-medium ml-1">{formData.bathrooms}</span> phòng tắm
+              </div>
+              <div className="text-rose-600 font-bold text-lg">
+                {rentalType === 'SHORT_TERM'
+                  ? `${formData.pricePerNight?.toLocaleString()} ₫/đêm`
+                  : `${formData.pricePerMonth?.toLocaleString()} ₫/tháng`
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Packages Grid */}
+      {loadingPackages ? (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-rose-500"></div>
+          <p className="text-gray-600 mt-4">Đang tải gói đăng tin...</p>
+        </div>
+      ) : (
+        <div className="grid md:grid-cols-3 gap-6">
+          {packages.map((pkg) => (
+            <div
+              key={pkg.id}
+              onClick={() => setSelectedPackage(pkg)}
+              className={`relative cursor-pointer rounded-2xl border-2 transition-all duration-300 ${
+                selectedPackage?.id === pkg.id
+                  ? 'border-rose-500 shadow-xl shadow-rose-500/20 scale-105'
+                  : 'border-gray-200 hover:border-rose-300 hover:shadow-lg'
+              }`}
+            >
+              {/* Badge */}
+              {pkg.badge && (
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
+                  <div className="bg-gradient-to-r from-rose-500 to-orange-500 text-white px-4 py-1 rounded-full text-xs font-bold shadow-lg">
+                    {pkg.badge}
+                  </div>
+                </div>
+              )}
+
+              <div className="p-6">
+                {/* Package Icon */}
+                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4 ${
+                  pkg.priorityLevel >= 3
+                    ? 'bg-gradient-to-br from-yellow-400 to-orange-500'
+                    : pkg.priorityLevel >= 2
+                    ? 'bg-gradient-to-br from-blue-400 to-blue-600'
+                    : 'bg-gradient-to-br from-gray-400 to-gray-600'
+                }`}>
+                  {pkg.priorityLevel >= 3 ? (
+                    <Crown className="w-6 h-6 text-white" />
+                  ) : pkg.priorityLevel >= 2 ? (
+                    <Star className="w-6 h-6 text-white" />
+                  ) : (
+                    <Zap className="w-6 h-6 text-white" />
+                  )}
+                </div>
+
+                {/* Package Name */}
+                <h4 className="text-xl font-bold text-gray-900 mb-2">{pkg.name}</h4>
+
+                {/* Price */}
+                <div className="mb-4">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-gray-900">
+                      {pkg.price === 0 ? 'Miễn phí' : pkg.price.toLocaleString()}
+                    </span>
+                    {pkg.price > 0 && <span className="text-gray-600">₫</span>}
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Thời hạn {pkg.durationDays} ngày
+                  </p>
+                </div>
+
+                {/* Features */}
+                <div className="space-y-3 mb-4">
+                  {pkg.features?.map((feature, idx) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm text-gray-700">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Select Button */}
+                {selectedPackage?.id === pkg.id && (
+                  <div className="absolute top-4 right-4">
+                    <div className="w-8 h-8 bg-rose-500 rounded-full flex items-center justify-center">
+                      <Check className="w-5 h-5 text-white" />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Payment Method Selection */}
+      {selectedPackage && selectedPackage.price > 0 && (
+        <div className="bg-white rounded-2xl p-6 border-2 border-gray-200">
+          <h4 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <DollarSign className="w-6 h-6 text-rose-500" />
+            Chọn Phương Thức Thanh Toán
+          </h4>
+
+          <div className="grid md:grid-cols-3 gap-4">
+            {/* Bank Transfer */}
+            <div
+              onClick={() => setPaymentMethod('BANK_TRANSFER')}
+              className={`cursor-pointer rounded-xl border-2 p-4 transition-all ${
+                paymentMethod === 'BANK_TRANSFER'
+                  ? 'border-rose-500 bg-rose-50'
+                  : 'border-gray-200 hover:border-rose-300'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold text-gray-900">Chuyển khoản</span>
+                {paymentMethod === 'BANK_TRANSFER' && (
+                  <Check className="w-5 h-5 text-rose-500" />
+                )}
+              </div>
+              <p className="text-sm text-gray-600">Chuyển khoản ngân hàng</p>
+            </div>
+
+            {/* Momo */}
+            <div
+              onClick={() => setPaymentMethod('MOMO')}
+              className={`cursor-pointer rounded-xl border-2 p-4 transition-all ${
+                paymentMethod === 'MOMO'
+                  ? 'border-rose-500 bg-rose-50'
+                  : 'border-gray-200 hover:border-rose-300'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold text-gray-900">Momo</span>
+                {paymentMethod === 'MOMO' && (
+                  <Check className="w-5 h-5 text-rose-500" />
+                )}
+              </div>
+              <p className="text-sm text-gray-600">Ví điện tử Momo</p>
+            </div>
+
+            {/* VNPay */}
+            <div
+              onClick={() => setPaymentMethod('VNPAY')}
+              className={`cursor-pointer rounded-xl border-2 p-4 transition-all ${
+                paymentMethod === 'VNPAY'
+                  ? 'border-rose-500 bg-rose-50'
+                  : 'border-gray-200 hover:border-rose-300'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-semibold text-gray-900">VNPay</span>
+                {paymentMethod === 'VNPAY' && (
+                  <Check className="w-5 h-5 text-rose-500" />
+                )}
+              </div>
+              <p className="text-sm text-gray-600">Cổng thanh toán VNPay</p>
+            </div>
+          </div>
+
+          {/* Payment Instructions for Bank Transfer */}
+          {paymentMethod === 'BANK_TRANSFER' && (
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <h5 className="font-semibold text-blue-900 mb-2">Thông tin chuyển khoản</h5>
+              <div className="space-y-1 text-sm text-blue-800">
+                <p><span className="font-medium">Ngân hàng:</span> Vietcombank</p>
+                <p><span className="font-medium">Số tài khoản:</span> 1234567890</p>
+                <p><span className="font-medium">Chủ tài khoản:</span> STAYEASE COMPANY</p>
+                <p><span className="font-medium">Số tiền:</span> {selectedPackage.price.toLocaleString()} ₫</p>
+                <p><span className="font-medium">Nội dung:</span> THANHTOAN [Mã giao dịch sẽ được tạo]</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Order Summary */}
+      {selectedPackage && (
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
+          <h4 className="text-xl font-bold text-gray-900 mb-4">Tóm tắt đơn hàng</h4>
+
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Gói đã chọn:</span>
+              <span className="font-semibold text-gray-900">{selectedPackage.name}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Thời hạn:</span>
+              <span className="font-semibold text-gray-900">{selectedPackage.durationDays} ngày</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Phương thức thanh toán:</span>
+              <span className="font-semibold text-gray-900">Ví StayEase</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Số dư hiện tại:</span>
+              <span className="font-semibold text-gray-900">{walletBalance.toLocaleString()} ₫</span>
+            </div>
+            <div className="border-t border-gray-300 pt-3 mt-3">
+              <div className="flex justify-between items-baseline">
+                <span className="text-lg font-bold text-gray-900">Tổng cộng:</span>
+                <div className="text-right">
+                  <span className="text-3xl font-bold text-rose-600">
+                    {selectedPackage.price === 0 ? 'Miễn phí' : selectedPackage.price.toLocaleString()}
+                  </span>
+                  {selectedPackage.price > 0 && <span className="text-rose-600 ml-1">₫</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Balance Warning */}
+          {selectedPackage.price > 0 && walletBalance < selectedPackage.price && (
+            <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+                <div className="text-sm text-red-700">
+                  <p className="font-semibold mb-1">Số dư không đủ!</p>
+                  <p>Bạn cần thêm {(selectedPackage.price - walletBalance).toLocaleString()} ₫ vào ví để đăng tin với gói này.</p>
+                  <a href="/wallet" className="inline-block mt-2 text-red-800 font-semibold underline hover:text-red-900">
+                    → Nạp tiền vào ví
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Info Notice */}
+      <div className={`border rounded-xl p-4 ${
+        selectedPackage && selectedPackage.price > 0 && walletBalance < selectedPackage.price
+          ? 'bg-yellow-50 border-yellow-200'
+          : 'bg-green-50 border-green-200'
+      }`}>
+        <div className="flex gap-3">
+          <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+            selectedPackage && selectedPackage.price > 0 && walletBalance < selectedPackage.price
+              ? 'text-yellow-500'
+              : 'text-green-500'
+          }`} fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
           </svg>
-          <div className="text-sm text-green-700">
-            <p className="font-medium">Sẵn sàng đăng tin!</p>
-            <p className="mt-1">Nhấn "Đăng tin" để hoàn tất. Tin của bạn sẽ được xét duyệt trong vòng 24h.</p>
+          <div className={`text-sm ${
+            selectedPackage && selectedPackage.price > 0 && walletBalance < selectedPackage.price
+              ? 'text-yellow-700'
+              : 'text-green-700'
+          }`}>
+            <p className="font-semibold mb-1">
+              {selectedPackage && selectedPackage.price > 0 && walletBalance < selectedPackage.price
+                ? 'Cần nạp thêm tiền!'
+                : 'Sẵn sàng đăng tin!'
+              }
+            </p>
+            <p>
+              {selectedPackage && selectedPackage.price > 0 && walletBalance < selectedPackage.price
+                ? `Vui lòng nạp thêm ${(selectedPackage.price - walletBalance).toLocaleString()} ₫ vào ví trước khi đăng tin.`
+                : selectedPackage
+                ? `Nhấn "Hoàn tất" để tạo tin đăng. ${selectedPackage.price === 0 ? 'Tin sẽ được kích hoạt ngay và xét duyệt trong 24h.' : `Tiền sẽ tự động trừ từ ví (${selectedPackage.price.toLocaleString()} ₫) và tin đăng được kích hoạt ngay lập tức.`}`
+                : 'Vui lòng chọn một gói đăng tin để tiếp tục.'
+              }
+            </p>
           </div>
         </div>
       </div>
@@ -1474,7 +1796,11 @@ const AddPropertyPage: React.FC = () => {
         return formData.title && formData.description;
       case 4: // Images - optional
         return true;
-      case 5: // Payment Config - always allow
+      case 5: // Package Selection & Payment
+        // Require package selection
+        if (!selectedPackage) return false;
+        // If package is not free, require payment method
+        if (selectedPackage.price > 0 && !paymentMethod) return false;
         return true;
       default:
         return true;

@@ -12,7 +12,6 @@ import type { PropertyFilter, Listing } from '@/types';
 const LongTermListingsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [properties, setProperties] = useState<Listing[]>([]);
-  const [filters, setFilters] = useState<PropertyFilter>({});
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -21,26 +20,66 @@ const LongTermListingsPage: React.FC = () => {
 
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-  // Initialize filters from URL params
+  // Helper function to parse filters from URL params
+  const getFiltersFromUrlParams = (params: URLSearchParams): PropertyFilter => {
+    const location = params.get('location');
+    const minPrice = params.get('minPrice');
+    const maxPrice = params.get('maxPrice');
+    const roomType = params.get('roomType');
+
+    const filters: PropertyFilter = {};
+    if (location) filters.city = location;
+    if (minPrice) filters.minPrice = Number(minPrice);
+    if (maxPrice) filters.maxPrice = Number(maxPrice);
+
+    // Map roomType from search bar to propertyTypes array
+    if (roomType) {
+      // Map the roomType value to property type
+      const roomTypeMap: Record<string, string> = {
+        'single': 'ROOM',
+        'double': 'ROOM',
+        'loft': 'ROOM',
+        'studio': 'STUDIO',
+        'apartment': 'APARTMENT',
+      };
+
+      const mappedType = roomTypeMap[roomType];
+      if (mappedType) {
+        filters.propertyTypes = [mappedType];
+      }
+    }
+
+    console.log('LongTermListingsPage: Parsed filters from URL', filters);
+    return filters;
+  };
+
+  const [filters, setFilters] = useState<PropertyFilter>(() => getFiltersFromUrlParams(searchParams));
+
+  // Update filters when URL params change
   useEffect(() => {
-    const location = searchParams.get('location');
-    const minPrice = searchParams.get('minPrice');
-    const maxPrice = searchParams.get('maxPrice');
-    // const roomType = searchParams.get('roomType');
-
-    const initialFilters: PropertyFilter = {};
-    if (location) initialFilters.city = location;
-    if (minPrice) initialFilters.minPrice = Number(minPrice);
-    if (maxPrice) initialFilters.maxPrice = Number(maxPrice);
-    // Note: roomType mapping would be handled differently in production
-
-    setFilters(initialFilters);
+    const newFilters = getFiltersFromUrlParams(searchParams);
+    console.log('LongTermListingsPage: URL params changed, updating filters', newFilters);
+    setFilters(newFilters);
   }, [searchParams]);
 
   // Fetch properties whenever filters change
   const fetchProperties = useCallback(async (page = 0) => {
     setLoading(true);
     try {
+      console.log('LongTermListingsPage: Fetching properties with filters', {
+        page,
+        filters: {
+          minPrice: filters.minPrice,
+          maxPrice: filters.maxPrice,
+          city: filters.city,
+          categoryId: filters.categoryId,
+          propertyTypes: filters.propertyTypes,
+          amenityIds: filters.amenityIds,
+          minArea: filters.minArea,
+          maxArea: filters.maxArea,
+        }
+      });
+
       // Use dedicated long-term API endpoint
       const response = await api.getLongTermProperties(page, 12, {
         minPrice: filters.minPrice,
@@ -56,6 +95,7 @@ const LongTermListingsPage: React.FC = () => {
       console.log('LongTermListingsPage: API response', {
         success: response.success,
         dataLength: response.data?.content?.length || 0,
+        totalElements: response.data?.totalElements || 0,
         filters: {
           propertyTypes: filters.propertyTypes,
           amenityIds: filters.amenityIds,
@@ -140,8 +180,31 @@ const LongTermListingsPage: React.FC = () => {
                 Phòng trọ dài hạn
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
-                {properties.length} phòng trọ có sẵn
+                {loading ? 'Đang tìm kiếm...' : `${properties.length} phòng trọ có sẵn`}
               </p>
+              {/* Show active search criteria */}
+              {(filters.city || filters.minPrice || filters.maxPrice || filters.propertyTypes) && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {filters.city && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-sm">
+                      <span className="material-symbols-outlined !text-[16px]">location_on</span>
+                      {filters.city}
+                    </span>
+                  )}
+                  {(filters.minPrice || filters.maxPrice) && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-sm">
+                      <span className="material-symbols-outlined !text-[16px]">payments</span>
+                      {filters.minPrice ? `${filters.minPrice.toLocaleString()}₫` : '0₫'} - {filters.maxPrice ? `${filters.maxPrice.toLocaleString()}₫` : '∞'}
+                    </span>
+                  )}
+                  {filters.propertyTypes && filters.propertyTypes.length > 0 && (
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-sm">
+                      <span className="material-symbols-outlined !text-[16px]">bed</span>
+                      {filters.propertyTypes.join(', ')}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             {hasActiveFilters() && (
               <button

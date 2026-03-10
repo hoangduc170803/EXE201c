@@ -3,6 +3,25 @@ const API_BASE_URL = 'http://localhost:8080/api';
 
 import type {BookingResponse, CreateBookingRequest, PropertyFilter, BookingStatsResponse, BookingCalendarResponse} from '@/types';
 
+// Dashboard Types
+export interface DashboardStatsResponse {
+  monthlyRevenue: number;
+  monthlyRevenueChangePercent: number;
+  totalGuests: number;
+  totalGuestsChangePercent: number;
+  totalViews: number;
+  totalViewsChangePercent: number;
+  averageRating: number;
+  totalReviews: number;
+}
+
+export interface MonthlyRevenueResponse {
+  month: number;
+  year: number;
+  monthName: string;
+  revenue: number;
+}
+
 // Types for API responses
 export interface ApiResponse<T> {
   success: boolean;
@@ -560,6 +579,16 @@ class ApiService {
     return this.request<ApiResponse<BookingCalendarResponse>>(`/bookings/host-calendar${queryString}`);
   }
 
+  // Dashboard API
+  async getDashboardStats() {
+    return this.request<ApiResponse<DashboardStatsResponse>>('/dashboard/stats');
+  }
+
+  async getMonthlyRevenue(year?: number) {
+    const queryString = year ? `?year=${year}` : '';
+    return this.request<ApiResponse<MonthlyRevenueResponse[]>>(`/dashboard/monthly-revenue${queryString}`);
+  }
+
   // User Profile API
   async getUserProfile() {
     return this.getCurrentUser();
@@ -673,8 +702,129 @@ class ApiService {
   }
 }
 
-// Export singleton instance
+
+
+// Posting Package Types
+export interface PostingPackageResponse {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  price: number;
+  durationDays: number;
+  priorityLevel: number;
+  isActive: boolean;
+  features: string[];
+  isPopular: boolean;
+  badge?: string;
+}
+
+export interface CreateSubscriptionRequest {
+  propertyId: number;
+  packageId: number;
+  paymentMethod: string;
+  transactionNote?: string;
+}
+
+export interface PropertyPackageSubscriptionResponse {
+  id: number;
+  postingPackage: PostingPackageResponse;
+  propertyId: number;
+  startAt: string;
+  endAt: string;
+  isActive: boolean;
+  transactionId: string;
+  status: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  createdAt: string;
+}
+
+// Posting Package API Service
+class PostingPackageApiService {
+  private baseUrl: string;
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+  }
+
+  async getAllActivePackages(): Promise<PostingPackageResponse[]> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseUrl}/packages`, {
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch packages');
+    }
+    return response.json();
+  }
+
+  async getPackageById(id: number): Promise<PostingPackageResponse> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseUrl}/packages/${id}`, {
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+    if (!response.ok) {
+      throw new Error('Failed to fetch package');
+    }
+    return response.json();
+  }
+
+  async createSubscription(request: CreateSubscriptionRequest): Promise<PropertyPackageSubscriptionResponse> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseUrl}/packages/subscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to create subscription');
+    }
+    return response.json();
+  }
+
+  async confirmPayment(transactionId: string): Promise<PropertyPackageSubscriptionResponse> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseUrl}/packages/confirm-payment/${transactionId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to confirm payment');
+    }
+    return response.json();
+  }
+
+  async getPropertySubscriptions(propertyId: number): Promise<PropertyPackageSubscriptionResponse[]> {
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${this.baseUrl}/packages/property/${propertyId}/subscriptions`, {
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch property subscriptions');
+    }
+    return response.json();
+  }
+}
+
+// Export singleton instances
 export const api = new ApiService(API_BASE_URL);
+export const packageApi = new PostingPackageApiService(API_BASE_URL);
 
 // Helper function to convert API property to frontend Listing format
 export const propertyToListing = (property: PropertyDto) => ({

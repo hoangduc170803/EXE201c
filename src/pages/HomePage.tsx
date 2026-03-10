@@ -25,7 +25,8 @@ const HomePage: React.FC = () => {
           const allPropertiesResponse = await api.filterProperties({}, 0, 16);
           if (allPropertiesResponse.success && allPropertiesResponse.data) {
               response = {
-              success: true,
+                  timestamp: Date.now().toString(),
+                  success: true,
               data: allPropertiesResponse.data.content,
               message: 'Properties loaded'
             };
@@ -89,8 +90,20 @@ const HomePage: React.FC = () => {
       // Navigate to short-term listings page with search params
       const params = new URLSearchParams();
       if (criteria.location) params.append('location', criteria.location);
-      if (criteria.checkIn) params.append('checkIn', criteria.checkIn.toISOString());
-      if (criteria.checkOut) params.append('checkOut', criteria.checkOut.toISOString());
+      if (criteria.checkIn) {
+        // Format date as YYYY-MM-DD for API
+        const year = criteria.checkIn.getFullYear();
+        const month = String(criteria.checkIn.getMonth() + 1).padStart(2, '0');
+        const day = String(criteria.checkIn.getDate()).padStart(2, '0');
+        params.append('checkIn', `${year}-${month}-${day}`);
+      }
+      if (criteria.checkOut) {
+        // Format date as YYYY-MM-DD for API
+        const year = criteria.checkOut.getFullYear();
+        const month = String(criteria.checkOut.getMonth() + 1).padStart(2, '0');
+        const day = String(criteria.checkOut.getDate()).padStart(2, '0');
+        params.append('checkOut', `${year}-${month}-${day}`);
+      }
       if (criteria.guests) {
         params.append('adults', criteria.guests.adults.toString());
         params.append('children', criteria.guests.children.toString());
