@@ -91,7 +91,7 @@ const DashboardPage: React.FC = () => {
             {/* Content Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
               {/* Chart Section */}
-              <div className="xl:col-span-2">
+              <div className="xl:col-span-2 space-y-4">
                 <RevenueChart />
               </div>
               

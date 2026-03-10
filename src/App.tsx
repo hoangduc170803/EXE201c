@@ -13,6 +13,9 @@ import DashboardPage from '@/pages/DashboardPage';
 import MessagesPage from '@/pages/MessagesPage';
 import CheckoutPage from '@/pages/CheckoutPage';
 import AddPropertyPage from '@/pages/AddPropertyPage';
+import WalletPage from '@/pages/WalletPage';
+import AdminDashboardPage from '@/pages/AdminDashboardPage';
+import AdminPaymentSettingsPage from '@/pages/AdminPaymentSettingsPage';
 
 const App: React.FC = () => {
   return (
@@ -21,8 +24,9 @@ const App: React.FC = () => {
         <Route index element={<HomePage />} />
         <Route path="long-term-listings" element={<LongTermListingsPage />} />
         <Route path="short-term-listings" element={<ShortTermListingsPage />} />
+          <Route path="/listing/:id" element={<ListingPage />} />
       </Route>
-      <Route path="/listing/:id" element={<ListingPage />} />
+
       <Route path="/auth" element={<AuthPage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/messages" element={<MessagesPage />} />
@@ -31,6 +35,9 @@ const App: React.FC = () => {
       <Route path="/host/add-property" element={<AddPropertyPage />} />
       <Route path="/host/dashboard" element={<DashboardPage />} />
       <Route path="/host/reservations" element={<ReservationsPage />} />
+      <Route path="/wallet" element={<WalletPage />} />
+      <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+      <Route path="/admin/payment-settings" element={<AdminPaymentSettingsPage />} />
     </Routes>
   );
 };

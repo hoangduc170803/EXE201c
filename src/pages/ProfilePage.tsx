@@ -9,6 +9,7 @@ import ProfileFavorites from '../components/profile/ProfileFavorites';
 import ProfileBookings from '../components/profile/ProfileBookings';
 import { useProfile } from '../hooks/useProfile';
 import { api } from '../services/api';
+import Footer from "@/components/layout/Footer.tsx";
 
 const ProfilePage: React.FC = () => {
   const { profile, bookings, loading, error } = useProfile();
@@ -273,6 +274,7 @@ const ProfilePage: React.FC = () => {
           </main>
         </div>
       </div>
+        <Footer/>
     </div>
   );
 };

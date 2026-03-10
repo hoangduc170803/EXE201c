@@ -6,7 +6,7 @@ const Footer: React.FC = () => {
     <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pt-12 pb-8 px-4 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-[1440px]">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-ơ          {/* Hỗ trợ khách hàng */}
+          {/* Hỗ trợ khách hàng */}
           <div>
             <h4 className="font-bold text-[#0d141b] dark:text-white mb-4">
               Hỗ trợ khách hàng
@@ -34,10 +34,9 @@ const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Về StayEase */}
           <div>
             <h4 className="font-bold text-[#0d141b] dark:text-white mb-4">
- c              Về StayEase
+               Về HolaRent
             </h4>
             <ul className="space-y-3 text-sm text-gray-600 dark:text-gray-400">
               <li><Link className="hover:underline" to="#">Tin tức</Link></li>
@@ -55,7 +54,7 @@ const Footer: React.FC = () => {
                 home
               </span>
               <h4 className="font-bold text-[#0d141b] dark:text-white text-lg">
-                StayEase
+                HolaRent
               </h4>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">

@@ -1,10 +1,65 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Header: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [loadingWallet, setLoadingWallet] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+
+  // Check if current path is admin route
+  useEffect(() => {
+    setIsAdminMode(location.pathname.startsWith('/admin'));
+  }, [location.pathname]);
+
+  // Load wallet balance when user is logged in
+  useEffect(() => {
+    if (isAuthenticated && user?.roles?.includes('ROLE_HOST')) {
+      loadWalletBalance();
+    }
+  }, [isAuthenticated, user]);
+
+  const loadWalletBalance = async () => {
+    try {
+      setLoadingWallet(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:8080/api/wallet', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (response.ok) {
+        const walletData = await response.json();
+        setWalletBalance(walletData.balance || 0);
+      }
+    } catch (error) {
+      console.error('Failed to load wallet:', error);
+    } finally {
+      setLoadingWallet(false);
+    }
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 1000000) {
+      return `${(amount / 1000000).toFixed(1)}M`;
+    } else if (amount >= 1000) {
+      return `${(amount / 1000).toFixed(0)}K`;
+    }
+    return amount.toString();
+  };
+
+  const toggleAdminMode = () => {
+    if (isAdminMode) {
+      // Switch to user mode - go to home
+      navigate('/');
+    } else {
+      // Switch to admin mode - go to admin dashboard
+      navigate('/admin/dashboard');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[#e7edf3] dark:border-gray-800 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm">
@@ -21,21 +76,7 @@ const Header: React.FC = () => {
           </h2>
         </Link>
 
-        {/* Desktop Search (Collapsed State) */}
-        <div className="hidden lg:flex items-center rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-shadow py-2.5 px-4 gap-4 cursor-pointer">
-          <button className="text-sm font-medium pl-2">Tìm phòng trọ</button>
-          <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600"></div>
-          <button className="text-sm font-medium">Mức giá</button>
-          <div className="h-4 w-[1px] bg-gray-300 dark:bg-gray-600"></div>
-          <button className="text-sm text-gray-500 dark:text-gray-400 font-normal pr-2 flex items-center gap-2">
-            Loại phòng
-            <div className="bg-primary text-white p-1.5 rounded-full flex items-center justify-center">
-              <span className="material-symbols-outlined !text-[14px]">
-                search
-              </span>
-            </div>
-          </button>
-        </div>
+
 
         {/* Right Actions */}
         <div className="flex items-center gap-4">
@@ -47,6 +88,58 @@ const Header: React.FC = () => {
           >
             Cho thuê phòng trọ
           </Link>
+
+          {/* Wallet Button - Only for Hosts */}
+          {isAuthenticated && user?.roles?.includes('ROLE_HOST') && (
+            <Link
+              to="/wallet"
+              className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${
+                location.pathname === '/wallet' 
+                  ? 'bg-rose-50 border-rose-500 text-rose-600' 
+                  : 'border-gray-200 hover:border-rose-300 hover:bg-rose-50'
+              }`}
+              title="Ví của tôi"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+              <span className="text-sm font-semibold">
+                {loadingWallet ? '...' : `${formatCurrency(walletBalance)} ₫`}
+              </span>
+              {walletBalance < 50000 && (
+                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              )}
+            </Link>
+          )}
+
+          {/* Admin Mode Toggle - Only for Admins */}
+          {isAuthenticated && user?.roles?.includes('ROLE_ADMIN') && (
+            <button
+              onClick={toggleAdminMode}
+              className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-full transition-all border-2 ${
+                isAdminMode
+                  ? 'bg-purple-500 text-white border-purple-500 shadow-lg' 
+                  : 'bg-white text-gray-700 border-purple-300 hover:bg-purple-50 hover:border-purple-400'
+              }`}
+              title={isAdminMode ? 'Chế độ Admin - Click để về trang khách' : 'Chế độ Khách - Click để vào Admin'}
+            >
+              <span className="material-symbols-outlined !text-[20px]">
+                {isAdminMode ? 'admin_panel_settings' : 'supervised_user_circle'}
+              </span>
+              <span className="text-sm font-semibold">
+                {isAdminMode ? 'Admin Mode' : 'User Mode'}
+              </span>
+              <svg
+                className={`w-4 h-4 transition-transform ${isAdminMode ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </button>
+          )}
+
           <button className="hidden md:flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
             <span className="material-symbols-outlined !text-[20px]">
               language
@@ -126,6 +219,61 @@ const Header: React.FC = () => {
                       <span className="material-symbols-outlined !text-[16px]">person</span>
                       Tài khoản
                     </Link>
+                    
+                    {/* Wallet Link in Dropdown - For Hosts */}
+                    {user?.roles?.includes('ROLE_HOST') && (
+                      <Link to="/wallet" className="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <div className="flex items-center gap-3">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                          </svg>
+                          Ví của tôi
+                        </div>
+                        <span className={`text-xs font-semibold ${walletBalance < 50000 ? 'text-red-600' : 'text-green-600'}`}>
+                          {formatCurrency(walletBalance)} ₫
+                        </span>
+                      </Link>
+                    )}
+                    
+                    {/* Admin Section in Dropdown - For Admins */}
+                    {user?.roles?.includes('ROLE_ADMIN') && (
+                      <>
+                        <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                        <div className="px-3 py-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase">
+                              Admin Panel
+                            </span>
+                            <button
+                              onClick={toggleAdminMode}
+                              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                isAdminMode
+                                  ? 'bg-purple-500 text-white'
+                                  : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                              }`}
+                            >
+                              {isAdminMode ? 'Admin Mode' : 'User Mode'}
+                            </button>
+                          </div>
+                        </div>
+                        <Link
+                          to="/admin/dashboard"
+                          className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <span className="material-symbols-outlined !text-[16px]">admin_panel_settings</span>
+                          Dashboard
+                        </Link>
+                        <Link
+                          to="/admin/payment-settings"
+                          className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <span className="material-symbols-outlined !text-[16px]">settings</span>
+                          Cài đặt Thanh toán
+                        </Link>
+                        <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                      </>
+                    )}
+                    
                     <Link to="/profile?tab=bookings" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                       <span className="material-symbols-outlined !text-[16px]">calendar_month</span>
                       Lịch sử đặt phòng
