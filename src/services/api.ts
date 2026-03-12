@@ -610,13 +610,13 @@ class ApiService {
     });
   }
 
-  // File Upload APIs
-  async uploadImage(file: File, onProgress?: (progress: number) => void) {
-    const formData = new FormData();
-    formData.append('file', file);
+      // File Upload APIs
+      async uploadImage(file: File, onProgress?: (progress: number) => void) {
+        const formData = new FormData();
+        formData.append('file', file);
 
-    return this.uploadFileWithProgress('/files/upload-image', formData, onProgress);
-  }
+        return this.uploadFileWithProgress('/files/upload-image', formData, onProgress);
+      }
 
   async uploadImages(files: File[], onProgress?: (progress: number) => void) {
     const formData = new FormData();

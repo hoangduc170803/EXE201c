@@ -15,6 +15,12 @@ const AuthForm: React.FC = () => {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [role, setRole] = useState('GUEST');
+  const [phone, setPhone] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('');
 
   // UI States
   const [loading, setLoading] = useState(false);
@@ -31,6 +37,12 @@ const AuthForm: React.FC = () => {
     setFirstName('');
     setLastName('');
     setError(null);
+    setRole('GUEST');
+    setPhone('');
+    setDateOfBirth('');
+    setAddress('');
+    setCity('');
+    setCountry('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,7 +61,12 @@ const AuthForm: React.FC = () => {
           password,
           firstName,
           lastName,
-          role: 'GUEST' // Default role
+          role: role,
+          phone: role === 'HOST' ? phone : undefined,
+          dateOfBirth: role === 'HOST' ? dateOfBirth : undefined,
+          address: role === 'HOST' ? address : undefined,
+          city: role === 'HOST' ? city : undefined,
+          country: role === 'HOST' ? country : undefined,
         });
         await refreshUser(); // Refresh user state after registration
         navigate('/');
@@ -114,34 +131,148 @@ const AuthForm: React.FC = () => {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
           {authMode === AuthMode.SIGNUP && (
-            <div className="flex gap-4">
-              <label className="flex flex-col w-full gap-2">
+            <>
+              <div className="flex gap-4">
+                <label className="flex flex-col w-full gap-2">
+                  <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
+                    First Name
+                  </span>
+                  <input
+                    type="text"
+                    className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
+                    placeholder="John"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                  />
+                </label>
+                <label className="flex flex-col w-full gap-2">
+                  <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
+                    Last Name
+                  </span>
+                  <input
+                    type="text"
+                    className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
+                    placeholder="Doe"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                  />
+                </label>
+              </div>
+              <div className="flex flex-col gap-2">
                 <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
-                  First Name
+                  Register as
                 </span>
-                <input
-                  type="text"
-                  className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
-                  placeholder="John"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                />
-              </label>
-              <label className="flex flex-col w-full gap-2">
-                <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
-                  Last Name
-                </span>
-                <input
-                  type="text"
-                  className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
-                  placeholder="Doe"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                />
-              </label>
-            </div>
+                <div className="flex h-12 flex-1 items-center justify-center rounded-lg bg-[#e7edf3] dark:bg-[#202934] p-1">
+                  <label
+                    onClick={() => setRole('GUEST')}
+                    className={`flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 text-sm font-bold leading-normal transition-all duration-200 ${role === 'GUEST'
+                        ? 'bg-white dark:bg-[#2f3b4b] shadow-sm text-primary'
+                        : 'text-[#4c739a] dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                      }`}
+                  >
+                    <span className="truncate">Guest</span>
+                    <input
+                      type="radio"
+                      name="role"
+                      value="GUEST"
+                      checked={role === 'GUEST'}
+                      onChange={() => { }}
+                      className="invisible w-0 absolute"
+                    />
+                  </label>
+                  <label
+                    onClick={() => setRole('HOST')}
+                    className={`flex cursor-pointer h-full grow items-center justify-center overflow-hidden rounded-md px-2 text-sm font-bold leading-normal transition-all duration-200 ${role === 'HOST'
+                        ? 'bg-white dark:bg-[#2f3b4b] shadow-sm text-primary'
+                        : 'text-[#4c739a] dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                      }`}
+                  >
+                    <span className="truncate">Host</span>
+                    <input
+                      type="radio"
+                      name="role"
+                      value="HOST"
+                      checked={role === 'HOST'}
+                      onChange={() => { }}
+                      className="invisible w-0 absolute"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {role === 'HOST' && (
+                <>
+                  <label className="flex flex-col w-full gap-2">
+                    <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
+                      Phone Number
+                    </span>
+                    <input
+                      type="tel"
+                      className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
+                      placeholder="Enter your phone number"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="flex flex-col w-full gap-2">
+                    <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
+                      Date of Birth
+                    </span>
+                    <input
+                      type="date"
+                      className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
+                      value={dateOfBirth}
+                      onChange={(e) => setDateOfBirth(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="flex flex-col w-full gap-2">
+                    <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
+                      Address
+                    </span>
+                    <input
+                      type="text"
+                      className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
+                      placeholder="Enter your address"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <div className="flex gap-4">
+                    <label className="flex flex-col w-full gap-2">
+                      <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
+                        City
+                      </span>
+                      <input
+                        type="text"
+                        className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
+                        placeholder="City"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        required
+                      />
+                    </label>
+                    <label className="flex flex-col w-full gap-2">
+                      <span className="text-[#0d141b] dark:text-gray-200 text-sm font-bold leading-normal">
+                        Country
+                      </span>
+                      <input
+                        type="text"
+                        className="flex w-full resize-none overflow-hidden rounded-lg text-[#0d141b] dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 focus:border-primary border border-[#cfdbe7] dark:border-[#3e4a5b] bg-slate-50 dark:bg-[#1a232d] h-12 px-4 placeholder:text-[#93adc8] text-base font-normal leading-normal transition-all"
+                        placeholder="Country"
+                        value={country}
+                        onChange={(e) => setCountry(e.target.value)}
+                        required
+                      />
+                    </label>
+                  </div>
+                </>
+              )}
+            </>
           )}
 
           <label className="flex flex-col w-full gap-2">
