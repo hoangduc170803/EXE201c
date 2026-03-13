@@ -8,13 +8,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#2b8cee",
+        primary: {
+          DEFAULT: '#F43F5E', // rose-500
+          light: '#FFE4E6', // rose-100
+          dark: '#E11D48', // rose-600
+        },
         "background-light": "#ffffff",
         "background-dark": "#101922",
         "surface-light": "#f6f7f8",
         "surface-dark": "#1a2632",
       },
       fontFamily: {
+        sans: ["Be Vietnam Pro", "sans-serif"],
         display: ["Be Vietnam Pro", "sans-serif"],
       },
       boxShadow: {
@@ -25,4 +30,3 @@ export default {
   },
   plugins: [],
 }
-

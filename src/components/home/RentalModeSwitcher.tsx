@@ -19,7 +19,7 @@ const RentalModeSwitcher: React.FC<RentalModeSwitcherProps> = ({ mode, onChange 
           }`}
         >
           <span className="material-symbols-outlined !text-[20px]">home</span>
-          <span>Thuê trọ dài hạn</span>
+          <span>Tìm trọ</span>
         </button>
         <button
           onClick={() => onChange('short-term')}
@@ -30,7 +30,7 @@ const RentalModeSwitcher: React.FC<RentalModeSwitcherProps> = ({ mode, onChange 
           }`}
         >
           <span className="material-symbols-outlined !text-[20px]">flight</span>
-          <span>Thuê ngắn hạn</span>
+          <span>Thuê homestay</span>
         </button>
       </div>
     </div>
