@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Upload, Eye, EyeOff, Check } from 'lucide-react';
+import { Save, Upload, Eye, EyeOff, Check, X, Maximize2 } from 'lucide-react';
+import AdminHeader from '@/components/admin/AdminHeader';
 
 interface PaymentSetting {
   id: number;
@@ -35,10 +36,11 @@ const AdminPaymentSettingsPage: React.FC = () => {
   const [qrFile, setQrFile] = useState<File | null>(null);
   const [qrPreview, setQrPreview] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [showFullPreview, setShowFullPreview] = useState(false);
 
   useEffect(() => {
     loadSettings();
-    loadPaymentInfo();
+    // Removed loadPaymentInfo() call to rely on admin settings source of truth
   }, []);
 
   const loadSettings = async () => {
@@ -53,6 +55,48 @@ const AdminPaymentSettingsPage: React.FC = () => {
         const data = await response.json();
         setSettings(data);
         console.log('Loaded payment settings:', data.length, 'items');
+
+        // Populate form from settings
+        const newPaymentInfo = { ...paymentInfo };
+        let hasChanges = false;
+
+        data.forEach((setting: PaymentSetting) => {
+          switch (setting.settingKey) {
+            case 'BANK_NAME':
+              newPaymentInfo.bankName = setting.settingValue;
+              hasChanges = true;
+              break;
+            case 'BANK_ACCOUNT_NUMBER':
+              newPaymentInfo.bankAccountNumber = setting.settingValue;
+              hasChanges = true;
+              break;
+            case 'BANK_ACCOUNT_HOLDER':
+              newPaymentInfo.bankAccountHolder = setting.settingValue;
+              hasChanges = true;
+              break;
+            case 'BANK_BRANCH':
+              newPaymentInfo.bankBranch = setting.settingValue;
+              hasChanges = true;
+              break;
+            case 'QR_CODE_URL':
+              newPaymentInfo.qrCodeUrl = setting.settingValue;
+              if (setting.settingValue && !setting.settingValue.startsWith('http')) {
+                 setQrPreview(`http://localhost:8080${setting.settingValue}`);
+              } else if (setting.settingValue) {
+                 setQrPreview(setting.settingValue);
+              }
+              hasChanges = true;
+              break;
+            case 'PAYMENT_NOTES':
+              newPaymentInfo.paymentNotes = setting.settingValue;
+              hasChanges = true;
+              break;
+          }
+        });
+
+        if (hasChanges) {
+          setPaymentInfo(newPaymentInfo);
+        }
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -82,13 +126,14 @@ const AdminPaymentSettingsPage: React.FC = () => {
 
     try {
       const token = localStorage.getItem('token');
+      let currentQrUrl = paymentInfo.qrCodeUrl;
 
       // Upload QR code if new file selected
       if (qrFile) {
         const formData = new FormData();
         formData.append('files', qrFile);
 
-        const uploadResponse = await fetch('http://localhost:8080/api/files/upload/images', {
+        const uploadResponse = await fetch('http://localhost:8080/api/files/upload-images', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -98,7 +143,9 @@ const AdminPaymentSettingsPage: React.FC = () => {
 
         if (uploadResponse.ok) {
           const uploadData = await uploadResponse.json();
-          paymentInfo.qrCodeUrl = uploadData[0].imageUrl;
+          if (uploadData.success && uploadData.data && uploadData.data.length > 0) {
+            currentQrUrl = uploadData.data[0].url;
+          }
         }
       }
 
@@ -108,7 +155,7 @@ const AdminPaymentSettingsPage: React.FC = () => {
         { settingKey: 'BANK_ACCOUNT_NUMBER', settingValue: paymentInfo.bankAccountNumber, category: 'BANK_INFO' },
         { settingKey: 'BANK_ACCOUNT_HOLDER', settingValue: paymentInfo.bankAccountHolder, category: 'BANK_INFO' },
         { settingKey: 'BANK_BRANCH', settingValue: paymentInfo.bankBranch, category: 'BANK_INFO' },
-        { settingKey: 'QR_CODE_URL', settingValue: paymentInfo.qrCodeUrl, category: 'QR_CODE' },
+        { settingKey: 'QR_CODE_URL', settingValue: currentQrUrl, category: 'QR_CODE' },
         { settingKey: 'PAYMENT_NOTES', settingValue: paymentInfo.paymentNotes, category: 'PAYMENT_INFO' },
       ];
 
@@ -157,6 +204,7 @@ const AdminPaymentSettingsPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <AdminHeader />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -287,12 +335,19 @@ const AdminPaymentSettingsPage: React.FC = () => {
                   Preview
                 </label>
                 {qrPreview ? (
-                  <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                  <div 
+                    className="border border-gray-300 rounded-lg p-4 bg-gray-50 relative group cursor-pointer hover:border-rose-400 transition-colors"
+                    onClick={() => setShowFullPreview(true)}
+                    title="Nhấn để phóng to"
+                  >
                     <img
                       src={qrPreview}
                       alt="QR Code"
                       className="w-full h-48 object-contain"
                     />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 rounded-lg">
+                      <Maximize2 className="w-8 h-8 text-white drop-shadow-md" />
+                    </div>
                   </div>
                 ) : (
                   <div className="border border-gray-300 rounded-lg p-4 bg-gray-50 h-56 flex items-center justify-center">
@@ -369,11 +424,35 @@ const AdminPaymentSettingsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Full Screen Preview Modal */}
+      {showFullPreview && qrPreview && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => setShowFullPreview(false)}
+        >
+          <button
+            onClick={() => setShowFullPreview(false)}
+            className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          
+          <div 
+            className="relative max-w-full max-h-full overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={qrPreview}
+              alt="QR Code Full Screen"
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default AdminPaymentSettingsPage;
-
-
 

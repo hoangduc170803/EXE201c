@@ -34,20 +34,18 @@ const Hero: React.FC<HeroProps> = ({ onSearch, initialKeyword = '', defaultMode 
         <div
           className="relative rounded-3xl bg-cover bg-center min-h-[520px] md:min-h-[480px] w-full flex flex-col items-center justify-center text-center px-4 py-12"
           style={{
-            backgroundImage:
-              "linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.5)), url('https://lh3.googleusercontent.com/aida-public/AB6AXuD-whOX4EE0loBF-tGCUZ1ZoRTw3FlAOvJ9v5P8gHzDNOJv3k5WcaI95m7fJ-ddtcsWWP6yi5lPTjq8gxvEDVRoJ2BNj7BhcZR-esIExGjCRdbYOuFtnIefnlNLGfwuuqWN9ZzbmwHW4wsEqv4eDQhQG7vekiP9zYuY7FPL7RSAUfIx33gehk0w9JMeGeM9iwrUCaHnWoT4-gznCsUaNHRyEV6XJln72aBpipZp_JGmssTdVKeUhOJHO_f7Pkrun_uQiW7FrLg_HD4')",
-          }}
+              backgroundImage: "linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.6)), url('https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=2070&auto=format&fit=crop')",}}
         >
           <div className="relative w-full max-w-4xl flex flex-col items-center gap-8">
             {/* Title and Subtitle */}
             <div className="space-y-4 md:space-y-2">
-              <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white tracking-tight drop-shadow-md px-2">
-                {rentalMode === 'long-term' ? 'Tìm phòng trọ lý tưởng' : 'Find your next adventure'}
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight drop-shadow-md px-2">
+                {rentalMode === 'long-term' ? 'Tìm phòng trọ lý tưởng' : 'Tìm nơi phiêu lưu tiếp theo của bạn'}
               </h1>
               <p className="text-white/90 text-lg md:text-xl font-medium max-w-2xl mx-auto drop-shadow-sm px-4">
                 {rentalMode === 'long-term'
                   ? 'Khám phá hàng nghìn phòng trọ, căn hộ mini giá tốt gần bạn'
-                  : 'Discover hotels, homes, and unique stays around the world.'}
+                  : 'Khám phá khách sạn, nhà ở và những nơi lưu trú độc đáo'}
               </p>
             </div>
 

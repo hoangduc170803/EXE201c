@@ -62,7 +62,7 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#e7edf3] dark:border-gray-800 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-gray-800 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm">
       <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-4 sm:px-8 lg:px-12">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 cursor-pointer">
@@ -76,33 +76,31 @@ const Header: React.FC = () => {
           </h2>
         </Link>
 
-
-
         {/* Right Actions */}
         <div className="flex items-center gap-4">
           <Link
             to="/host"
-            className={`hidden md:block text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 px-4 py-2 rounded-full transition-colors ${
-              location.pathname === '/host' ? 'text-primary' : ''
+            className={`hidden md:block text-sm font-medium hover:text-primary dark:hover:text-primary px-4 py-2 rounded-full transition-colors ${
+              location.pathname === '/host' ? 'text-primary font-semibold' : 'text-gray-600 dark:text-gray-300'
             }`}
           >
-            Cho thuê phòng trọ
+            Cho thuê chỗ ở
           </Link>
 
           {/* Wallet Button - Only for Hosts */}
-          {isAuthenticated && user?.roles?.includes('ROLE_HOST') && (
+          {isAuthenticated && user?.roles?.includes('ROLE_HOST')&& !user?.roles?.includes('ROLE_ADMIN') && (
             <Link
               to="/wallet"
               className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${
                 location.pathname === '/wallet' 
-                  ? 'bg-rose-50 border-rose-500 text-rose-600' 
-                  : 'border-gray-200 hover:border-rose-300 hover:bg-rose-50'
+                  ? 'bg-rose-50 border-rose-500 text-rose-600 font-semibold' 
+                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 dark:hover:border-rose-500/30 dark:hover:text-rose-500'
               }`}
               title="Ví của tôi"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
+              <span className="material-symbols-outlined !text-lg">
+                account_balance_wallet
+              </span>
               <span className="text-sm font-semibold">
                 {loadingWallet ? '...' : `${formatCurrency(walletBalance)} ₫`}
               </span>
@@ -116,38 +114,30 @@ const Header: React.FC = () => {
           {isAuthenticated && user?.roles?.includes('ROLE_ADMIN') && (
             <button
               onClick={toggleAdminMode}
-              className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-full transition-all border-2 ${
+              className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-full transition-all border ${
                 isAdminMode
-                  ? 'bg-purple-500 text-white border-purple-500 shadow-lg' 
-                  : 'bg-white text-gray-700 border-purple-300 hover:bg-purple-50 hover:border-purple-400'
+                  ? 'bg-purple-50 text-purple-600 border-purple-500 font-semibold' 
+                  : 'bg-transparent text-gray-600 dark:text-gray-300 border-transparent hover:bg-purple-50 dark:hover:bg-purple-500/10'
               }`}
-              title={isAdminMode ? 'Chế độ Admin - Click để về trang khách' : 'Chế độ Khách - Click để vào Admin'}
+              title={isAdminMode ? 'Chuyển sang chế độ người dùng' : 'Đi tới trang quản trị'}
             >
               <span className="material-symbols-outlined !text-[20px]">
-                {isAdminMode ? 'admin_panel_settings' : 'supervised_user_circle'}
+                {isAdminMode ? 'shield_person' : 'shield'}
               </span>
               <span className="text-sm font-semibold">
-                {isAdminMode ? 'Admin Mode' : 'User Mode'}
+                {isAdminMode ? 'Admin' : 'Quản trị'}
               </span>
-              <svg
-                className={`w-4 h-4 transition-transform ${isAdminMode ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
             </button>
           )}
 
-          <button className="hidden md:flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+          <button className="hidden md:flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300">
             <span className="material-symbols-outlined !text-[20px]">
               language
             </span>
           </button>
           <Link 
             to="/messages" 
-            className="hidden md:flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
+            className="hidden md:flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative text-gray-600 dark:text-gray-300"
           >
             <span className="material-symbols-outlined !text-[20px]">
               chat_bubble
@@ -157,8 +147,8 @@ const Header: React.FC = () => {
           
           {/* User Menu */}
           <div className="relative group">
-            <button className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 hover:shadow-md transition-all ml-1">
-              <span className="material-symbols-outlined !text-[20px]">
+            <button className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 hover:shadow-soft transition-all ml-1">
+              <span className="material-symbols-outlined !text-[20px] text-gray-600 dark:text-gray-400">
                 menu
               </span>
               {isAuthenticated && user ? (
@@ -187,13 +177,14 @@ const Header: React.FC = () => {
                     </>
                   ) : (
                     <span className="flex items-center justify-center w-full h-full">
-                      {(user.fullName || user.firstName || user.email || 'U').charAt(0).toUpperCase()}
+                      {(user.fullName || user.firstName || user.email || 'U').charAt(0).toUpperCase()
+                      }
                     </span>
                   )}
                 </div>
               ) : (
                 // Show default icon when not logged in
-                <div className="bg-gray-500 text-white rounded-full p-1">
+                <div className="bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full p-1 flex items-center justify-center">
                   <span className="material-symbols-outlined !text-[24px] filled">
                     account_circle
                   </span>
@@ -221,7 +212,7 @@ const Header: React.FC = () => {
                     </Link>
                     
                     {/* Wallet Link in Dropdown - For Hosts */}
-                    {user?.roles?.includes('ROLE_HOST') && (
+                    {user?.roles?.includes('ROLE_HOST')&& !user?.roles?.includes('ROLE_ADMIN') && (
                       <Link to="/wallet" className="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
                         <div className="flex items-center gap-3">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
