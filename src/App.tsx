@@ -16,6 +16,10 @@ import AddPropertyPage from '@/pages/AddPropertyPage';
 import WalletPage from '@/pages/WalletPage';
 import AdminDashboardPage from '@/pages/AdminDashboardPage';
 import AdminPaymentSettingsPage from '@/pages/AdminPaymentSettingsPage';
+import AdminCommissionSettingsPage from '@/pages/AdminCommissionSettingsPage';
+import AdminSettlementsQueuePage from '@/pages/AdminSettlementsQueuePage';
+import HostEarningsPage from '@/pages/HostEarningsPage';
+import AdminBankStatementsPage from '@/pages/AdminBankStatementsPage';
 
 const App: React.FC = () => {
   return (
@@ -35,11 +39,15 @@ const App: React.FC = () => {
       <Route path="/host/add-property" element={<AddPropertyPage />} />
       <Route path="/host/dashboard" element={<DashboardPage />} />
       <Route path="/host/reservations" element={<ReservationsPage />} />
+      <Route path="/host/finance" element={<HostEarningsPage />} />
       <Route path="/wallet" element={<WalletPage />} />
       <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
       <Route path="/admin/payment-settings" element={<AdminPaymentSettingsPage />} />
-    </Routes>
-  );
-};
+      <Route path="/admin/commission-settings" element={<AdminCommissionSettingsPage />} />
+      <Route path="/admin/settlements" element={<AdminSettlementsQueuePage />} />
+      <Route path="/admin/bank-statements" element={<AdminBankStatementsPage />} />
+     </Routes>
+   );
+ };
 
 export default App;

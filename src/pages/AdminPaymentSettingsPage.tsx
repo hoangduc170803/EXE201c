@@ -13,6 +13,7 @@ interface PaymentSetting {
 
 interface PaymentInfo {
   bankName: string;
+  bankBin?: string;
   bankAccountNumber: string;
   bankAccountHolder: string;
   bankBranch: string;
@@ -21,9 +22,10 @@ interface PaymentInfo {
 }
 
 const AdminPaymentSettingsPage: React.FC = () => {
-  const [settings, setSettings] = useState<PaymentSetting[]>([]);
+  const [, setSettings] = useState<PaymentSetting[]>([]);
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo>({
     bankName: '',
+    bankBin: '',
     bankAccountNumber: '',
     bankAccountHolder: '',
     bankBranch: '',
@@ -66,6 +68,10 @@ const AdminPaymentSettingsPage: React.FC = () => {
               newPaymentInfo.bankName = setting.settingValue;
               hasChanges = true;
               break;
+            case 'BANK_BIN':
+              newPaymentInfo.bankBin = setting.settingValue;
+              hasChanges = true;
+              break;
             case 'BANK_ACCOUNT_NUMBER':
               newPaymentInfo.bankAccountNumber = setting.settingValue;
               hasChanges = true;
@@ -105,21 +111,6 @@ const AdminPaymentSettingsPage: React.FC = () => {
     }
   };
 
-  const loadPaymentInfo = async () => {
-    try {
-      const response = await fetch('http://localhost:8080/api/wallet/payment-info');
-      if (response.ok) {
-        const data = await response.json();
-        setPaymentInfo(data);
-        if (data.qrCodeUrl) {
-          setQrPreview(`http://localhost:8080${data.qrCodeUrl}`);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load payment info:', error);
-    }
-  };
-
   const handleSave = async () => {
     setSaving(true);
     setSuccessMessage('');
@@ -152,6 +143,7 @@ const AdminPaymentSettingsPage: React.FC = () => {
       // Save all settings
       const updates = [
         { settingKey: 'BANK_NAME', settingValue: paymentInfo.bankName, category: 'BANK_INFO' },
+        { settingKey: 'BANK_BIN', settingValue: paymentInfo.bankBin || '', category: 'BANK_INFO' },
         { settingKey: 'BANK_ACCOUNT_NUMBER', settingValue: paymentInfo.bankAccountNumber, category: 'BANK_INFO' },
         { settingKey: 'BANK_ACCOUNT_HOLDER', settingValue: paymentInfo.bankAccountHolder, category: 'BANK_INFO' },
         { settingKey: 'BANK_BRANCH', settingValue: paymentInfo.bankBranch, category: 'BANK_INFO' },
@@ -248,6 +240,22 @@ const AdminPaymentSettingsPage: React.FC = () => {
                   placeholder="VD: Vietcombank"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mã BIN ngân hàng (VietQR) *
+                </label>
+                <input
+                  type="text"
+                  value={paymentInfo.bankBin || ''}
+                  onChange={(e) => setPaymentInfo({ ...paymentInfo, bankBin: e.target.value })}
+                  placeholder="VD: 970436"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  BIN dùng để tạo QR động qua VietQR (img.vietqr.io).
+                </p>
               </div>
 
               <div>

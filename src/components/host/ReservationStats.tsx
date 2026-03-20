@@ -126,7 +126,7 @@ const ReservationStats: React.FC = () => {
       <div className="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-[#1A2633] border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-shadow">
         <div className="flex justify-between items-center">
           <p className="text-slate-500 dark:text-gray-400 text-sm font-medium leading-normal uppercase tracking-wider">
-            Doanh thu dự kiến
+            Doanh thu (sau phí)
           </p>
           <span className="material-symbols-outlined text-green-500">payments</span>
         </div>
@@ -134,7 +134,7 @@ const ReservationStats: React.FC = () => {
           {formatCurrency(stats.expectedRevenue)}
         </p>
         <p className="text-xs text-blue-600 font-medium bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded w-fit mt-1">
-          Sắp nhận: {formatCurrency(stats.upcomingRevenue)}
+          Đến hạn nhận: {formatCurrency(stats.upcomingRevenue)}
         </p>
       </div>
     </div>

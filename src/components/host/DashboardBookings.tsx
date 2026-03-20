@@ -6,6 +6,7 @@ import type { BookingResponse } from '@/types';
 const DashboardBookings: React.FC = () => {
   const [bookings, setBookings] = useState<BookingResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dueBookingIds, setDueBookingIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     loadRecentBookings();
@@ -18,6 +19,17 @@ const DashboardBookings: React.FC = () => {
       if (response.success && response.data) {
         setBookings(response.data.content);
       }
+
+      // Settlement status (money eligibility) - independent from booking status.
+      // If the API isn't available yet, we fallback silently.
+      try {
+        const dueRes = await api.getHostSettlementDueItems();
+        if (dueRes.success && Array.isArray(dueRes.data)) {
+          setDueBookingIds(new Set(dueRes.data.map((x: any) => Number(x.bookingId))));
+        }
+      } catch {
+        // ignore
+      }
     } catch (error) {
       console.error('Failed to load recent bookings:', error);
     } finally {
@@ -25,12 +37,43 @@ const DashboardBookings: React.FC = () => {
     }
   };
 
+  const getSettlementBadge = (booking: BookingResponse) => {
+    if (booking.paymentStatus !== 'PAID') {
+      return {
+        text: 'Chưa thanh toán',
+        color: 'text-gray-600 bg-gray-50 dark:bg-gray-800',
+        tooltip: 'Khách chưa hoàn tất thanh toán.'
+      };
+    }
+
+    if (booking.hostPayoutAmountVnd == null) {
+      return {
+        text: 'Chờ đối soát',
+        color: 'text-slate-700 bg-slate-100 dark:bg-slate-800',
+        tooltip: 'Khách đã chuyển khoản/biên lai, admin chưa đối soát sao kê để xác nhận thanh toán.'
+      };
+    }
+    // Paid but held by platform until settlement
+    if (dueBookingIds.has(Number(booking.id))) {
+      return {
+        text: 'Đến hạn nhận',
+        color: 'text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20',
+        tooltip: 'Đã đến hạn chi trả theo quy tắc settlement.'
+      };
+    }
+    return {
+      text: 'Chờ đến hạn',
+      color: 'text-amber-700 bg-amber-50 dark:bg-amber-900/20',
+      tooltip: 'Đã xác nhận thanh toán nhưng chưa đến hạn chi trả theo quy tắc settlement.'
+    };
+  };
+
   const getStatusDisplay = (booking: BookingResponse) => {
     const { status, paymentStatus, checkInDate, checkOutDate } = booking;
 
     if (status === 'PENDING') {
       if (paymentStatus === 'PAID') {
-        return { text: 'Chờ duyệt', color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' };
+        return { text: 'Chờ duyệt (đã thanh toán)', color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' };
       }
       return { text: 'Chờ thanh toán', color: 'text-gray-600 bg-gray-50 dark:bg-gray-800' };
     }
@@ -102,6 +145,7 @@ const DashboardBookings: React.FC = () => {
         ) : (
           bookings.map((booking) => {
             const status = getStatusDisplay(booking);
+            const settlement = getSettlementBadge(booking);
             return (
               <Link
                 to="/reservations"
@@ -118,9 +162,17 @@ const DashboardBookings: React.FC = () => {
                     <h4 className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                       {booking.guest.firstName} {booking.guest.lastName}
                     </h4>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status.color}`}>
-                      {status.text}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${settlement.color}`}
+                        title={settlement.tooltip}
+                      >
+                        {settlement.text}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${status.color}`}>
+                        {status.text}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 truncate mb-1">
                     {booking.property.title}

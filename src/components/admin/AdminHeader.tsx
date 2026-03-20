@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, CreditCard, ArrowLeft, Shield } from 'lucide-react';
+import { LayoutDashboard, CreditCard, ArrowLeft, Shield, Percent, Wallet, FileSpreadsheet } from 'lucide-react';
 
 const AdminHeader: React.FC = () => {
   const navigate = useNavigate();
@@ -44,6 +44,41 @@ const AdminHeader: React.FC = () => {
               >
                 <CreditCard className="w-4 h-4" />
                 Cài đặt thanh toán
+              </Link>
+
+              <Link
+                to="/admin/commission-settings"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  location.pathname === '/admin/commission-settings'
+                    ? 'text-primary bg-primary/10'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Percent className="w-4 h-4" />
+                Commission
+              </Link>
+
+              <Link
+                to="/admin/settlements"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  location.pathname === '/admin/settlements'
+                    ? 'text-primary bg-primary/10'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Wallet className="w-4 h-4" />
+                Settlements
+              </Link>
+              <Link
+                to="/admin/bank-statements"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                  location.pathname === '/admin/bank-statements'
+                    ? 'text-primary bg-primary/10'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Bank Statements
               </Link>
             </nav>
 

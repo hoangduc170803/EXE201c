@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from 'react';
+import { Link } from 'react-router-dom';
 import AdminHeader from '@/components/admin/AdminHeader';
 import {
     LayoutDashboard,
@@ -15,6 +16,7 @@ import {
     Clock,
     AlertCircle,
     ImageIcon,
+    FileSpreadsheet,
 } from 'lucide-react';
 
 interface DashboardStats {
@@ -371,72 +373,104 @@ const AdminDashboardPage: React.FC = () => {
 
                 {/* Overview Tab */}
                 {activeTab === 'overview' && stats && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {/* Users Stats */}
-                        <div
-                            className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6 border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-base font-semibold text-gray-800 dark:text-white">Người dùng</h3>
-                                <div className="p-2.5 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
-                                    <Users className="w-6 h-6 text-blue-600 dark:text-blue-400"/>
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* Users Stats */}
+                            <div
+                                className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6 border border-gray-200 dark:border-gray-700">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-base font-semibold text-gray-800 dark:text-white">Người dùng</h3>
+                                    <div className="p-2.5 bg-blue-100 dark:bg-blue-500/20 rounded-lg">
+                                        <Users className="w-6 h-6 text-blue-600 dark:text-blue-400"/>
+                                    </div>
+                                </div>
+                                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalUsers}</p>
+                                <div className="mt-3 flex items-center text-sm text-green-600 dark:text-green-400">
+                                    <TrendingUp className="w-4 h-4 mr-1"/>
+                                    <span>+{stats.newUsersThisMonth} tháng này</span>
                                 </div>
                             </div>
-                            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalUsers}</p>
-                            <div className="mt-3 flex items-center text-sm text-green-600 dark:text-green-400">
-                                <TrendingUp className="w-4 h-4 mr-1"/>
-                                <span>+{stats.newUsersThisMonth} tháng này</span>
+
+                            {/* Properties Stats */}
+                            <div
+                                className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6 border border-gray-200 dark:border-gray-700">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-base font-semibold text-gray-800 dark:text-white">Tin đăng</h3>
+                                    <div className="p-2.5 bg-green-100 dark:bg-green-500/20 rounded-lg">
+                                        <Home className="w-6 h-6 text-green-600 dark:text-green-400"/>
+                                    </div>
+                                </div>
+                                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalProperties}</p>
+                                <div className="mt-3 flex items-center text-sm text-green-600 dark:text-green-400">
+                                    <TrendingUp className="w-4 h-4 mr-1"/>
+                                    <span>+{stats.newPropertiesThisMonth} tháng này</span>
+                                </div>
+                            </div>
+
+                            {/* Revenue Stats */}
+                            <div
+                                className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6 border border-gray-200 dark:border-gray-700">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-base font-semibold text-gray-800 dark:text-white">Doanh thu</h3>
+                                    <div className="p-2.5 bg-purple-100 dark:bg-purple-500/20 rounded-lg">
+                                        <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-400"/>
+                                    </div>
+                                </div>
+                                <p className="text-3xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.totalRevenue)}</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
+                                    {stats.totalTransactions} giao dịch
+                                </p>
+                            </div>
+
+                            {/* Subscriptions Stats */}
+                            <div
+                                className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6 border border-gray-200 dark:border-gray-700">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-base font-semibold text-gray-800 dark:text-white">Gói đăng ký</h3>
+                                    <div className="p-2.5 bg-orange-100 dark:bg-orange-500/20 rounded-lg">
+                                        <TrendingUp className="w-6 h-6 text-orange-600 dark:text-orange-400"/>
+                                    </div>
+                                </div>
+                                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.activeSubscriptions}</p>
+                                <div className="mt-3 flex gap-2 text-sm">
+                                    <span
+                                        className="text-yellow-600 dark:text-yellow-400">Chờ: {stats.pendingSubscriptions}</span>
+                                    <span
+                                        className="text-red-600 dark:text-red-400">Hết hạn: {stats.expiredSubscriptions}</span>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Properties Stats */}
-                        <div
-                            className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6 border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-base font-semibold text-gray-800 dark:text-white">Tin đăng</h3>
-                                <div className="p-2.5 bg-green-100 dark:bg-green-500/20 rounded-lg">
-                                    <Home className="w-6 h-6 text-green-600 dark:text-green-400"/>
+                        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Link
+                                to="/admin/settlements"
+                                className="flex items-center gap-4 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary/40 hover:shadow-soft transition"
+                            >
+                                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-300">
+                                    <Wallet className="w-6 h-6" />
                                 </div>
-                            </div>
-                            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalProperties}</p>
-                            <div className="mt-3 flex items-center text-sm text-green-600 dark:text-green-400">
-                                <TrendingUp className="w-4 h-4 mr-1"/>
-                                <span>+{stats.newPropertiesThisMonth} tháng này</span>
-                            </div>
-                        </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Payout queue</p>
+                                    <p className="text-lg font-bold text-gray-900 dark:text-white">Quản lý Settlements</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Theo dõi gross / commission / net từng booking</p>
+                                </div>
+                            </Link>
 
-                        {/* Revenue Stats */}
-                        <div
-                            className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6 border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-base font-semibold text-gray-800 dark:text-white">Doanh thu</h3>
-                                <div className="p-2.5 bg-purple-100 dark:bg-purple-500/20 rounded-lg">
-                                    <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-400"/>
+                            <Link
+                                to="/admin/bank-statements"
+                                className="flex items-center gap-4 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-primary/40 hover:shadow-soft transition"
+                            >
+                                <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+                                    <FileSpreadsheet className="w-6 h-6" />
                                 </div>
-                            </div>
-                            <p className="text-3xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.totalRevenue)}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">
-                                {stats.totalTransactions} giao dịch
-                            </p>
-                        </div>
-
-                        {/* Subscriptions Stats */}
-                        <div
-                            className="bg-white dark:bg-gray-800 rounded-xl shadow-soft p-6 border border-gray-200 dark:border-gray-700">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-base font-semibold text-gray-800 dark:text-white">Gói đăng ký</h3>
-                                <div className="p-2.5 bg-orange-100 dark:bg-orange-500/20 rounded-lg">
-                                    <TrendingUp className="w-6 h-6 text-orange-600 dark:text-orange-400"/>
+                                <div>
+                                    <p className="text-sm font-semibold text-gray-500 dark:text-gray-400">Reconciliation</p>
+                                    <p className="text-lg font-bold text-gray-900 dark:text-white">Import Bank Statement</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">Tải Excel Vietcombank, match & confirm thanh toán</p>
                                 </div>
-                            </div>
-                            <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.activeSubscriptions}</p>
-                            <div className="mt-3 flex gap-2 text-sm">
-                                <span
-                                    className="text-yellow-600 dark:text-yellow-400">Chờ: {stats.pendingSubscriptions}</span>
-                                <span
-                                    className="text-red-600 dark:text-red-400">Hết hạn: {stats.expiredSubscriptions}</span>
-                            </div>
+                            </Link>
                         </div>
-                    </div>
+                    </>
                 )}
 
                 {/* Properties Tab */}

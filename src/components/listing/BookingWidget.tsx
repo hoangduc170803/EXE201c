@@ -383,6 +383,16 @@ const BookingWidget: React.FC<BookingWidgetProps> = ({
             </div>
           </div>
 
+          {/* Primary action */}
+          <button
+            type="button"
+            onClick={handleCheckAvailability}
+            disabled={isCheckingAvailability}
+            className="w-full mt-4 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-bold py-3.5 rounded-lg shadow-lg active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
+          >
+            {getButtonText()}
+          </button>
+
           {/* Date Picker Popup */}
           {showDatePicker && (
             <div ref={datePickerRef} className="absolute top-full right-0 mt-2 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 p-4 z-20 w-[600px] sm:w-[650px] lg:w-[700px]">

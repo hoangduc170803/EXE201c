@@ -49,7 +49,7 @@ const HostSidebar: React.FC<SidebarProps> = ({ user, isOpen, onClose }) => {
     { to: '/host/reservations', icon: 'event_note', label: 'Reservations', badge: '3' },
     // { to: '/host/calendar', icon: 'calendar_month', label: 'Calendar' },
     { to: '/host/reviews', icon: 'star', label: 'Reviews' },
-    { to: '/host/finance', icon: 'payments', label: 'Finance' },
+    { to: '/host/finance', icon: 'payments', label: 'Earnings' },
   ];
 
   const isActive = (path: string, exact?: boolean) => {
