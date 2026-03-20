@@ -7,12 +7,45 @@ const ReservationList: React.FC = () => {
   const { user } = useAuth();
   const [bookings, setBookings] = useState<BookingResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dueBookingIds, setDueBookingIds] = useState<Set<number>>(new Set());
   const [selectedBooking, setSelectedBooking] = useState<BookingResponse | null>(null);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showGuestDetailsModal, setShowGuestDetailsModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string>('');
+
+  // Filters (client-side MVP)
+  const [searchText, setSearchText] = useState('');
+  const [bookingStatusFilter, setBookingStatusFilter] = useState<'ALL' | 'PENDING' | 'CONFIRMED' | 'CANCELLED'>('ALL');
+  const [settlementFilter, setSettlementFilter] = useState<'ALL' | 'UNPAID' | 'RECONCILE' | 'DUE' | 'NOT_DUE'>('ALL');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'ALL' | 'PAID' | 'PENDING'>('ALL');
+  const [sortBy, setSortBy] = useState<'CREATED_DESC' | 'CHECKIN_ASC' | 'CHECKOUT_ASC' | 'AMOUNT_DESC'>('CREATED_DESC');
+  const [checkInFrom, setCheckInFrom] = useState<string>('');
+  const [checkInTo, setCheckInTo] = useState<string>('');
+
+  // Pagination (client-side MVP)
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // UI: filter detail panel
+  const [showFilterDetail, setShowFilterDetail] = useState(false);
+
+  const resetFilters = () => {
+    setSearchText('');
+    setBookingStatusFilter('ALL');
+    setSettlementFilter('ALL');
+    setPaymentStatusFilter('ALL');
+    setSortBy('CREATED_DESC');
+    setCheckInFrom('');
+    setCheckInTo('');
+    setPage(1);
+  };
+
+  useEffect(() => {
+    // Reset to first page when filters change
+    setPage(1);
+  }, [searchText, bookingStatusFilter, settlementFilter, paymentStatusFilter, sortBy, checkInFrom, checkInTo, pageSize]);
 
   useEffect(() => {
     console.log('Current user:', user);
@@ -47,6 +80,17 @@ const ReservationList: React.FC = () => {
         console.log('Bookings loaded:', response.data.content);
         console.log('Number of bookings:', response.data.content?.length || 0);
         setBookings(response.data.content || []);
+
+        // Settlement status (money eligibility) - independent from booking status.
+        // If the API isn't available yet, we fallback silently.
+        try {
+          const dueRes = await api.getHostSettlementDueItems();
+          if (dueRes.success && Array.isArray(dueRes.data)) {
+            setDueBookingIds(new Set(dueRes.data.map((x: any) => Number(x.bookingId))));
+          }
+        } catch {
+          // ignore
+        }
       } else {
         console.error('Failed to load bookings - response not successful:', response);
         const errorMsg = response.message || 'Không thể tải danh sách đặt chỗ. Vui lòng thử lại.';
@@ -75,8 +119,150 @@ const ReservationList: React.FC = () => {
     }
   };
 
-  const handleConfirm = async (booking: BookingResponse) => {
+  const getSettlementBadge = (booking: BookingResponse) => {
     if (booking.paymentStatus !== 'PAID') {
+      return {
+        text: 'Chưa thanh toán',
+        className: 'bg-gray-100 text-gray-800',
+        tooltip: 'Khách chưa hoàn tất thanh toán. Nền tảng chỉ chi trả cho host sau khi booking đã được xác nhận thanh toán và đến hạn settlement.'
+      };
+    }
+
+    // Paid, but admin has not confirmed/reconciled payment yet (no commission/payout snapshot)
+    if (booking.hostPayoutAmountVnd == null) {
+      return {
+        text: 'Chờ đối soát',
+        className: 'bg-slate-100 text-slate-800',
+        tooltip: 'Khách đã chuyển khoản và/hoặc upload biên lai, nhưng admin chưa đối soát sao kê để xác nhận thanh toán.'
+      };
+    }
+    if (dueBookingIds.has(Number(booking.id))) {
+      return {
+        text: 'Đến hạn nhận',
+        className: 'bg-emerald-100 text-emerald-800',
+        tooltip: 'Booking đã đến hạn chi trả theo quy tắc settlement. Admin sẽ thực hiện payout thủ công và cập nhật trạng thái chi trả.'
+      };
+    }
+    return {
+      text: 'Chờ đến hạn',
+      className: 'bg-amber-100 text-amber-800',
+      tooltip: 'Booking đã được xác nhận thanh toán nhưng chưa đến hạn chi trả theo quy tắc settlement.'
+    };
+  };
+
+  const matchesSettlementFilter = (booking: BookingResponse) => {
+    const isPaid = booking.paymentStatus === 'PAID';
+    const hasSnapshot = booking.hostPayoutAmountVnd != null;
+    const isDue = dueBookingIds.has(Number(booking.id));
+
+    switch (settlementFilter) {
+      case 'UNPAID':
+        return !isPaid;
+      case 'RECONCILE':
+        return isPaid && !hasSnapshot;
+      case 'DUE':
+        return isPaid && hasSnapshot && isDue;
+      case 'NOT_DUE':
+        return isPaid && hasSnapshot && !isDue;
+      case 'ALL':
+      default:
+        return true;
+    }
+  };
+
+  const getSearchTarget = (booking: BookingResponse) => {
+    const guestName = `${booking.guest?.firstName || ''} ${booking.guest?.lastName || ''}`.trim();
+    const propertyTitle = booking.property?.title || '';
+    const bookingCode = booking.bookingCode || '';
+    const transferRef = booking.transferReference || '';
+    return `${guestName} ${propertyTitle} ${bookingCode} ${transferRef}`.toLowerCase();
+  };
+
+  const getFilteredBookings = () => {
+    const q = searchText.trim().toLowerCase();
+    let list = [...bookings];
+
+    if (q) {
+      list = list.filter(b => getSearchTarget(b).includes(q));
+    }
+
+    if (bookingStatusFilter !== 'ALL') {
+      list = list.filter(b => b.status === bookingStatusFilter);
+    }
+
+    if (paymentStatusFilter !== 'ALL') {
+      list = list.filter(b => b.paymentStatus === paymentStatusFilter);
+    }
+
+    if (settlementFilter !== 'ALL') {
+      list = list.filter(matchesSettlementFilter);
+    }
+
+    // Check-in date range filter
+    if (checkInFrom) {
+      const from = new Date(checkInFrom);
+      if (!Number.isNaN(from.getTime())) {
+        list = list.filter(b => new Date(b.checkInDate) >= from);
+      }
+    }
+    if (checkInTo) {
+      const to = new Date(checkInTo);
+      if (!Number.isNaN(to.getTime())) {
+        // inclusive by day
+        to.setHours(23, 59, 59, 999);
+        list = list.filter(b => new Date(b.checkInDate) <= to);
+      }
+    }
+
+    const toTime = (s: string) => {
+      const t = new Date(s).getTime();
+      return Number.isFinite(t) ? t : 0;
+    };
+
+    if (sortBy === 'CHECKIN_ASC') {
+      list.sort((a, b) => toTime(a.checkInDate) - toTime(b.checkInDate));
+    } else if (sortBy === 'CHECKOUT_ASC') {
+      list.sort((a, b) => toTime(a.checkOutDate) - toTime(b.checkOutDate));
+    } else if (sortBy === 'AMOUNT_DESC') {
+      list.sort((a, b) => Number(b.hostPayoutAmountVnd ?? b.totalPrice ?? 0) - Number(a.hostPayoutAmountVnd ?? a.totalPrice ?? 0));
+    } else {
+      // CREATED_DESC fallback
+      list.sort((a, b) => toTime(b.createdAt) - toTime(a.createdAt));
+    }
+
+    return list;
+  };
+
+  const filteredBookings = getFilteredBookings();
+  const totalPages = Math.max(1, Math.ceil(filteredBookings.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const pagedBookings = filteredBookings.slice(startIndex, startIndex + pageSize);
+
+  const applyQuickChip = (chip: 'NEED_CONFIRM' | 'RECONCILE' | 'DUE') => {
+    if (chip === 'NEED_CONFIRM') {
+      setBookingStatusFilter('PENDING');
+      setPaymentStatusFilter('PAID');
+      setSettlementFilter('ALL');
+      return;
+    }
+    if (chip === 'RECONCILE') {
+      setSettlementFilter('RECONCILE');
+      setPaymentStatusFilter('PAID');
+      return;
+    }
+    if (chip === 'DUE') {
+      setSettlementFilter('DUE');
+      setPaymentStatusFilter('PAID');
+    }
+  };
+
+
+  const handleConfirm = async (booking: BookingResponse) => {
+    // For bank transfer (QR), allow confirm once guest uploaded transfer proof.
+    const isQr = String(booking.paymentMethod || '').toUpperCase() === 'QR_CODE';
+    const hasProof = !!booking.transferProofImageUrl;
+    if (booking.paymentStatus !== 'PAID' && !(isQr && hasProof)) {
       alert('Cannot confirm booking: Payment not completed yet');
       return;
     }
@@ -164,7 +350,9 @@ const ReservationList: React.FC = () => {
     });
   };
 
-  const renderBookingCard = (booking: BookingResponse) => (
+  const renderBookingCard = (booking: BookingResponse) => {
+    const settlement = getSettlementBadge(booking);
+    return (
     <div
       key={booking.id}
       className="bg-white dark:bg-[#1A2633] rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow"
@@ -188,7 +376,15 @@ const ReservationList: React.FC = () => {
                 Booking #{booking.bookingCode}
               </p>
             </div>
-            {getStatusBadge(booking.status, booking.paymentStatus)}
+            <div className="flex items-center gap-2">
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${settlement.className}`}
+                title={settlement.tooltip}
+              >
+                {settlement.text}
+              </span>
+              {getStatusBadge(booking.status, booking.paymentStatus)}
+            </div>
           </div>
 
           {/* Guest Info */}
@@ -222,12 +418,49 @@ const ReservationList: React.FC = () => {
           <div className="flex items-center gap-2 mb-3">
             <span className="material-symbols-outlined text-gray-400">payments</span>
             <span className="font-semibold text-gray-900 dark:text-white">
-              ${booking.totalPrice.toFixed(2)}
+              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(
+                (booking.hostPayoutAmountVnd ?? booking.totalPrice) as any
+              )}
             </span>
             <span className="text-sm text-gray-500">
-              ({booking.paymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'})
+              ({booking.paymentStatus === 'PAID' ? 'Đã thanh toán (giữ bởi nền tảng)' : 'Chưa thanh toán'})
             </span>
           </div>
+
+          {/* Settlement hint */}
+          {booking.paymentStatus === 'PAID' && (
+            <div className="text-xs text-slate-600 dark:text-slate-400 mb-3">
+              Số tiền hiển thị là <span className="font-semibold">tiền dự kiến nhận (sau phí)</span>. Nền tảng sẽ chi trả theo quy tắc settlement.
+            </div>
+          )}
+
+          {/* Transfer proof (Host view) */}
+          {booking.transferProofImageUrl && (
+            <div className="mb-3">
+              <div className="text-sm text-gray-700 dark:text-gray-300 font-semibold mb-2">
+                Biên lai chuyển khoản
+              </div>
+              <a
+                href={booking.transferProofImageUrl.startsWith('http')
+                  ? booking.transferProofImageUrl
+                  : `http://localhost:8080${booking.transferProofImageUrl}`}
+                target="_blank"
+                rel="noreferrer"
+                className="block border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white"
+              >
+                <img
+                  src={booking.transferProofImageUrl.startsWith('http')
+                    ? booking.transferProofImageUrl
+                    : `http://localhost:8080${booking.transferProofImageUrl}`}
+                  alt="Transfer receipt"
+                  className="w-full h-40 object-contain"
+                />
+              </a>
+              {booking.transferReference && (
+                <div className="text-xs text-gray-500 mt-2">Mã tham chiếu: {booking.transferReference}</div>
+              )}
+            </div>
+          )}
 
           {/* Guest Message */}
           {booking.guestMessage && (
@@ -276,7 +509,8 @@ const ReservationList: React.FC = () => {
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   if (loading) {
     return (
@@ -289,6 +523,150 @@ const ReservationList: React.FC = () => {
 
   return (
     <div className="space-y-4">
+      {/* Filters */}
+      <div className="bg-white dark:bg-[#1A2633] rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+        {/* Search bar (always visible) */}
+        <div className="relative mb-4">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            search
+          </span>
+          <input
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Tên khách, mã booking, tên phòng..."
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary transition"
+          />
+        </div>
+
+        {/* Row: filter button + (money/date) quick filters + page size */}
+        <div className="flex flex-wrap items-end gap-3">
+          <button
+            type="button"
+            onClick={() => setShowFilterDetail(v => !v)}
+            className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <span className="material-symbols-outlined text-base">filter_list</span>
+            Bộ lọc chi tiết
+          </button>
+
+          {/* Sort by Amount */}
+          <div className="flex-grow sm:flex-grow-0">
+            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Lọc theo</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white"
+            >
+              <option value="CREATED_DESC">Mặc định (mới nhất)</option>
+              <option value="AMOUNT_DESC">Tiền cao→thấp</option>
+            </select>
+          </div>
+
+          {/* Check-in Date Range */}
+          <div className="flex-grow sm:flex-grow-0">
+            <label htmlFor="host-checkin-from" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Check-in từ</label>
+            <input
+              id="host-checkin-from"
+              type="date"
+              value={checkInFrom}
+              onChange={(e) => setCheckInFrom(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white"
+            />
+          </div>
+          <div className="flex-grow sm:flex-grow-0">
+            <label htmlFor="host-checkin-to" className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Check-in đến</label>
+            <input
+              id="host-checkin-to"
+              type="date"
+              value={checkInTo}
+              onChange={(e) => setCheckInTo(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white"
+            />
+          </div>
+
+          {/* Reset Button */}
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="flex items-center gap-2 px-4 py-2 border border-transparent text-gray-600 dark:text-gray-300 rounded-lg font-semibold hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            title="Xóa tất cả bộ lọc"
+          >
+            <span className="material-symbols-outlined text-base">refresh</span>
+            Reset
+          </button>
+
+          {/* Spacer */}
+          <div className="flex-1 min-w-[10px]"></div>
+
+          {/* Page Size */}
+          <div className="flex items-center gap-2">
+            <label htmlFor="host-page-size" className="text-xs font-semibold text-gray-600 dark:text-gray-300">/ trang</label>
+            <select
+              id="host-page-size"
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white text-sm"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Filter detail panel */}
+        {showFilterDetail && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-[#0d1117]/40">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Booking Status</label>
+              <select
+                value={bookingStatusFilter}
+                onChange={(e) => setBookingStatusFilter(e.target.value as any)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white"
+              >
+                <option value="ALL">Tất cả</option>
+                <option value="PENDING">PENDING</option>
+                <option value="CONFIRMED">CONFIRMED</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Payment Status</label>
+              <select
+                value={paymentStatusFilter}
+                onChange={(e) => setPaymentStatusFilter(e.target.value as any)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white"
+              >
+                <option value="ALL">Tất cả</option>
+                <option value="PAID">PAID</option>
+                <option value="PENDING">PENDING</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1">Settlement Status</label>
+              <select
+                value={settlementFilter}
+                onChange={(e) => setSettlementFilter(e.target.value as any)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-[#0d1117] text-gray-900 dark:text-white"
+              >
+                <option value="ALL">Tất cả</option>
+                <option value="UNPAID">Chưa thanh toán</option>
+                <option value="RECONCILE">Chờ đối soát</option>
+                <option value="NOT_DUE">Chờ đến hạn</option>
+                <option value="DUE">Đến hạn nhận</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        <div className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+          <span>Kết quả: <span className="font-semibold text-gray-800 dark:text-white">{filteredBookings.length}</span> booking</span>
+        </div>
+      </div>
+
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 px-4 py-3 rounded-lg">
           <div className="flex justify-between items-center">
@@ -302,11 +680,15 @@ const ReservationList: React.FC = () => {
           </div>
         </div>
       )}
-      {bookings.length === 0 ? (
+      {pagedBookings.length === 0 ? (
         <div className="text-center py-12 text-gray-500 dark:text-gray-400">
           <span className="material-symbols-outlined text-6xl mb-4">event_busy</span>
           <h3 className="text-lg font-semibold mb-2">Không có đặt chỗ nào</h3>
-          <p className="mb-4">Chưa có yêu cầu đặt chỗ nào cho các property của bạn.</p>
+          <p className="mb-4">
+            {bookings.length === 0
+              ? 'Chưa có yêu cầu đặt chỗ nào cho các property của bạn.'
+              : 'Không có booking nào khớp bộ lọc hiện tại.'}
+          </p>
 
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-800 dark:text-yellow-200 px-4 py-3 rounded-lg text-sm max-w-md mx-auto mb-4">
             <p><strong>Để test booking flow:</strong></p>
@@ -324,14 +706,14 @@ const ReservationList: React.FC = () => {
       ) : (
         <div>
           {/* Pending bookings that need host action */}
-          {bookings.some(booking => booking.status === 'PENDING' && booking.paymentStatus === 'PAID') && (
+          {pagedBookings.some(booking => booking.status === 'PENDING' && booking.paymentStatus === 'PAID') && (
             <div className="mb-8">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <span className="material-symbols-outlined text-orange-500">notifications_active</span>
-                Cần xác nhận ({bookings.filter(booking => booking.status === 'PENDING' && booking.paymentStatus === 'PAID').length})
+                Cần xác nhận ({filteredBookings.filter(booking => booking.status === 'PENDING' && booking.paymentStatus === 'PAID').length})
               </h3>
               <div className="space-y-4">
-                {bookings
+                {pagedBookings
                   .filter(booking => booking.status === 'PENDING' && booking.paymentStatus === 'PAID')
                   .map(booking => renderBookingCard(booking))}
               </div>
@@ -339,18 +721,59 @@ const ReservationList: React.FC = () => {
           )}
 
           {/* Other bookings */}
-          {bookings.some(booking => !(booking.status === 'PENDING' && booking.paymentStatus === 'PAID')) && (
+          {pagedBookings.some(booking => !(booking.status === 'PENDING' && booking.paymentStatus === 'PAID')) && (
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Tất cả booking khác ({bookings.filter(booking => !(booking.status === 'PENDING' && booking.paymentStatus === 'PAID')).length})
-              </h3>
               <div className="space-y-4">
-                {bookings
+                {pagedBookings
                   .filter(booking => !(booking.status === 'PENDING' && booking.paymentStatus === 'PAID'))
                   .map(booking => renderBookingCard(booking))}
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {filteredBookings.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-2">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            Trang <span className="font-semibold">{currentPage}</span> / {totalPages}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setPage(1)}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              «
+            </button>
+            <button
+              type="button"
+              disabled={currentPage <= 1}
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Trước
+            </button>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Sau
+            </button>
+            <button
+              type="button"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage(totalPages)}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              »
+            </button>
+          </div>
         </div>
       )}
 

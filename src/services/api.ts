@@ -1,7 +1,22 @@
 // API Configuration
 const API_BASE_URL = 'http://localhost:8080/api';
 
-import type {BookingResponse, CreateBookingRequest, PropertyFilter, BookingStatsResponse, BookingCalendarResponse} from '@/types';
+import type {
+  BookingResponse,
+  CreateBookingRequest,
+  PropertyFilter,
+  BookingStatsResponse,
+  BookingCalendarResponse,
+  BankStatementImportResponse,
+  BankStatementLineDto,
+  BankStatementSessionResponse,
+} from '@/types';
+
+export type {
+  BankStatementImportResponse,
+  BankStatementLineDto,
+  BankStatementSessionResponse,
+} from '@/types';
 
 // Dashboard Types
 export interface DashboardStatsResponse {
@@ -38,6 +53,146 @@ export interface PageResponse<T> {
   totalPages: number;
   last: boolean;
   first: boolean;
+}
+
+// Refund Types
+export interface RefundAccountResponse {
+  id: number;
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+  isDefault: boolean;
+}
+
+export type RefundRequestStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'PAID';
+
+export interface RefundRequestResponse {
+  id: number;
+  bookingId: number;
+  bookingCode: string;
+  guestId: number;
+  guestName: string;
+  refundAmount: number;
+  reason?: string;
+  status: RefundRequestStatus;
+  refundAccount: RefundAccountResponse;
+  adminNote?: string;
+  payoutReference?: string;
+  createdAt?: string;
+  approvedAt?: string;
+  paidAt?: string;
+}
+
+// Settlement / Payout (Host)
+export interface SettlementDueItemResponse {
+  bookingId: number;
+  bookingCode: string;
+  propertyTitle: string;
+  checkInDate: string;
+  checkOutDate: string;
+  dueAt: string;
+  totalPaidVnd: number;
+  commissionAmountVnd?: number | null;
+  hostPayoutAmountVnd: number;
+}
+
+export type HostPayoutStatus = 'DUE' | 'PROCESSING' | 'PAID' | 'CANCELLED';
+
+export interface HostPayoutResponse {
+  id: number;
+  hostId: number;
+  hostName?: string | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  amountVnd: number;
+  status: HostPayoutStatus;
+  payoutMethod?: string | null;
+  payoutReference?: string | null;
+  adminNote?: string | null;
+  approvedAt?: string | null;
+  paidAt?: string | null;
+  createdAt?: string | null;
+}
+
+export interface HostPayoutDetailResponse {
+  payout: HostPayoutResponse;
+  items: SettlementDueItemResponse[];
+}
+
+export type BookingSettlementStatus =
+  | 'WAITING_PAYMENT_CONFIRMATION'
+  | 'CALCULATED_WAITING_RELEASE'
+  | 'READY_FOR_PAYOUT'
+  | 'IN_PAYOUT'
+  | 'PAID_OUT'
+  | 'ON_HOLD';
+
+export interface BookingSettlementResponse {
+  id: number;
+  bookingId: number;
+  bookingCode: string;
+  hostId: number;
+  hostName: string;
+  guestId: number;
+  guestName: string;
+  propertyId: number;
+  propertyTitle: string;
+  checkInDate: string;
+  checkOutDate: string;
+  grossAmount: number;
+  commissionAmount: number;
+  hostNetAmount: number;
+  status: BookingSettlementStatus;
+  commissionRuleId?: number | null;
+  commissionPercentSnapshot?: number | null;
+  commissionFixedSnapshot?: number | null;
+  paymentConfirmedAt?: string | null;
+  eligibleForPayoutAt?: string | null;
+  payoutId?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Commission Rules (Admin)
+export type CommissionType = 'PERCENT' | 'FIXED' | 'PERCENT_PLUS_FIXED';
+export type CommissionAppliesTo = 'TOTAL' | 'SUBTOTAL';
+export type CommissionRoundingMode = 'ROUND_DOWN' | 'ROUND_HALF_UP';
+
+export interface CommissionRuleResponse {
+  id: number;
+  commissionType: CommissionType;
+  commissionPercent?: number | null;
+  commissionFixedVnd?: number | null;
+  commissionAppliesTo: CommissionAppliesTo;
+  roundingMode: CommissionRoundingMode;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  isActive: boolean;
+  version: number;
+  createdAt?: string;
+  updatedAt?: string;
+  createdBy?: string | null;
+}
+
+export interface CreateCommissionRuleRequest {
+  commissionType: CommissionType;
+  commissionPercent?: number | null;
+  commissionFixedVnd?: number | null;
+  commissionAppliesTo: CommissionAppliesTo;
+  roundingMode: CommissionRoundingMode;
+  effectiveFrom: string; // ISO
+  effectiveTo?: string | null;
+}
+
+// Wallet / Payment Info Types
+export interface PaymentInfoResponse {
+  bankName: string;
+  bankBin?: string | null;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
+  bankBranch?: string | null;
+  qrCodeUrl?: string | null;
+  paymentNotes?: string | null;
 }
 
 // Auth Types
@@ -164,7 +319,7 @@ export interface PropertyDto {
 }
 
 // API Service class
-class ApiService {
+export class ApiService {
   private baseUrl: string;
 
   constructor(baseUrl: string) {
@@ -535,6 +690,13 @@ class ApiService {
     );
   }
 
+  async submitTransferProof(bookingId: number, request: { transferProofImageUrl: string; transferReference?: string }) {
+    return this.request<ApiResponse<BookingResponse>>(`/bookings/${bookingId}/transfer-proof`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  }
+
   async confirmBooking(bookingId: number) {
     return this.request<ApiResponse<BookingResponse>>(`/bookings/${bookingId}/confirm`, {
       method: 'PUT',
@@ -556,6 +718,55 @@ class ApiService {
     );
   }
 
+  async getHostSettlementDueItems() {
+    return this.request<ApiResponse<SettlementDueItemResponse[]>>(
+      `/host/settlements/due-items`
+    );
+  }
+
+  async getHostSettlements(status?: BookingSettlementStatus, page = 0, size = 20) {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (status) params.append('status', status);
+    return this.request<PageResponse<BookingSettlementResponse>>(`/host/settlements?${params.toString()}`);
+  }
+
+  async getAdminSettlements(status?: BookingSettlementStatus, page = 0, size = 20) {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (status) params.append('status', status);
+    return this.request<PageResponse<BookingSettlementResponse>>(`/admin/settlements?${params.toString()}`);
+  }
+
+  async adminMarkSettlementReady(settlementId: number) {
+    return this.request<BookingSettlementResponse>(`/admin/settlements/${settlementId}/mark-ready`, {
+      method: 'PATCH',
+    });
+  }
+
+  async adminMarkSettlementPaidOut(settlementId: number, payoutId?: number) {
+    const query = payoutId ? `?payoutId=${encodeURIComponent(String(payoutId))}` : '';
+    return this.request<BookingSettlementResponse>(`/admin/settlements/${settlementId}/mark-paid-out${query}`, {
+      method: 'PATCH',
+    });
+  }
+
+  // Host payout API (Admin side)
+  async getAdminPayouts(status?: HostPayoutStatus, page = 0, size = 20) {
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (status) params.append('status', status);
+    return this.request<PageResponse<HostPayoutResponse>>(`/admin/payouts?${params.toString()}`);
+  }
+
+  async getAdminPayoutDetail(id: number) {
+    return this.request<HostPayoutDetailResponse>(`/admin/payouts/${id}`);
+  }
+
+  async adminMarkPayoutPaid(id: number, payload: { payoutReference: string; adminNote?: string }) {
+    return this.request<HostPayoutResponse>(`/admin/payouts/${id}/mark-paid`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async getMyBookings(page = 0, size = 10) {
     return this.request<ApiResponse<PageResponse<BookingResponse>>>(
       `/bookings/my-bookings?page=${page}&size=${size}`
@@ -564,6 +775,101 @@ class ApiService {
 
   async getBookingById(id: number) {
     return this.request<ApiResponse<BookingResponse>>(`/bookings/${id}`);
+  }
+
+  async deleteBooking(id: number) {
+    return this.request<ApiResponse<void>>(`/bookings/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Wallet API
+  async getPaymentInfo() {
+    // Public endpoint (permitAll): /api/wallet/payment-info
+    return this.request<PaymentInfoResponse>('/wallet/payment-info');
+  }
+
+  // Refund API (Guest)
+  async getRefundAccounts() {
+    return this.request<ApiResponse<RefundAccountResponse[]>>('/refunds/accounts');
+  }
+
+  async createRefundAccount(request: {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+    isDefault?: boolean;
+  }) {
+    return this.request<ApiResponse<RefundAccountResponse>>('/refunds/accounts', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async setDefaultRefundAccount(refundAccountId: number) {
+    return this.request<ApiResponse<RefundAccountResponse>>(`/refunds/accounts/${refundAccountId}/default`, {
+      method: 'PUT',
+    });
+  }
+
+  async deleteRefundAccount(refundAccountId: number) {
+    return this.request<ApiResponse<void>>(`/refunds/accounts/${refundAccountId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getRefundRequestForBooking(bookingId: number) {
+    return this.request<ApiResponse<RefundRequestResponse | null>>(`/refunds/bookings/${bookingId}/request`);
+  }
+
+  async createRefundRequest(bookingId: number, request: { refundAccountId: number; reason?: string }) {
+    return this.request<ApiResponse<RefundRequestResponse>>(`/refunds/bookings/${bookingId}/request`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async getMyRefundRequests(page = 0, size = 10) {
+    return this.request<ApiResponse<PageResponse<RefundRequestResponse>>>(
+      `/refunds/my-requests?page=${page}&size=${size}`
+    );
+  }
+
+  // Refund API (Admin)
+  async adminListRefundRequests(status?: RefundRequestStatus, page = 0, size = 10) {
+    const statusQuery = status ? `&status=${encodeURIComponent(status)}` : '';
+    return this.request<ApiResponse<PageResponse<RefundRequestResponse>>>(
+      `/admin/refunds?page=${page}&size=${size}${statusQuery}`
+    );
+  }
+
+  async adminUpdateRefundRequest(refundRequestId: number, request: {
+    status: RefundRequestStatus;
+    adminNote?: string;
+    payoutReference?: string;
+  }) {
+    return this.request<ApiResponse<RefundRequestResponse>>(`/admin/refunds/${refundRequestId}`, {
+      method: 'PUT',
+      body: JSON.stringify(request),
+    });
+  }
+
+  // Commission Rules API (Admin)
+  async adminListCommissionRules() {
+    return this.request<CommissionRuleResponse[]>(`/admin/commission-rules`);
+  }
+
+  async adminCreateCommissionRule(request: CreateCommissionRuleRequest) {
+    return this.request<CommissionRuleResponse>(`/admin/commission-rules`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async adminActivateCommissionRule(id: number) {
+    return this.request<CommissionRuleResponse>(`/admin/commission-rules/${id}/activate`, {
+      method: 'PATCH',
+    });
   }
 
   // New booking statistics and calendar endpoints
@@ -700,6 +1006,76 @@ class ApiService {
       xhr.send(formData);
     });
   }
+
+  async adminCreatePayoutFromReady(hostId: number, payload?: { adminNote?: string }) {
+    return this.request<HostPayoutDetailResponse>(`/admin/payouts/auto-create`, {
+      method: 'POST',
+      body: JSON.stringify({ hostId, adminNote: payload?.adminNote }),
+    });
+  }
+
+  async adminUploadBankStatement(file: File, previewLimit = 200) {
+    const token = this.getAccessToken();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(
+      `${this.baseUrl}/admin/bank-statements/vietcombank/import?previewLimit=${previewLimit}`,
+      {
+        method: 'POST',
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: formData,
+      }
+    );
+
+    const data = await response.json().catch(() => {
+      throw new Error('Không đọc được phản hồi từ máy chủ');
+    });
+
+    if (!response.ok) {
+      throw new Error(data?.message || 'Upload sao kê thất bại');
+    }
+    return data as ApiResponse<BankStatementImportResponse>;
+  }
+
+  async adminListBankStatementSessions(page = 0, size = 20) {
+    return this.request<ApiResponse<PageResponse<BankStatementSessionResponse>>>(
+      `/admin/bank-statements/sessions?page=${page}&size=${size}`
+    );
+  }
+
+  async adminGetBankStatementSession(sessionId: number) {
+    return this.request<ApiResponse<BankStatementImportResponse>>(
+      `/admin/bank-statements/sessions/${sessionId}`
+    );
+  }
+
+  async adminConfirmBankStatementLine(
+    sessionId: number,
+    lineId: number,
+    payload: { bookingId?: number; bookingCode?: string; bankReference?: string; note?: string }
+  ) {
+    return this.request<ApiResponse<BankStatementLineDto>>(
+      `/admin/bank-statements/sessions/${sessionId}/lines/${lineId}/confirm`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
+  async adminRejectBankStatementLine(sessionId: number, lineId: number, note: string) {
+    return this.request<ApiResponse<BankStatementLineDto>>(
+      `/admin/bank-statements/sessions/${sessionId}/lines/${lineId}/reject`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ note }),
+      }
+    );
+  }
+
 }
 
 

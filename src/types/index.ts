@@ -305,8 +305,15 @@ export interface BookingResponse {
   discountAmount: number;
   totalPrice: number;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-  paymentStatus: 'PENDING' | 'PAID' | 'REFUNDED';
+  paymentStatus: 'PENDING' | 'PAID' | 'PARTIALLY_PAID' | 'REFUNDED' | 'PARTIALLY_REFUNDED' | 'FAILED';
   paymentMethod?: string;
+  transferProofImageUrl?: string;
+  transferReference?: string;
+  cancellationReason?: string;
+  cancelledBy?: string;
+  refundAmount?: number;
+  commissionAmountVnd?: number;
+  hostPayoutAmountVnd?: number;
   specialRequests?: string;
   guestMessage?: string;
   hostResponse?: string;
@@ -411,3 +418,46 @@ export const bookingResponseToItem = (booking: BookingResponse): BookingItem => 
   };
 };
 
+// Bank Statement Reconciliation types
+export type BankStatementMatchStatus = 'UNMATCHED' | 'AUTO_MATCHED' | 'CONFIRMED' | 'REJECTED';
+
+export interface BankStatementLineDto {
+  rowNumber: number;
+  lineId?: number;
+  transactionDate?: string | null;
+  description: string;
+  amountIn?: number | null;
+  amountOut?: number | null;
+  extractedBookingCode?: string | null;
+  matched: boolean;
+  matchedBookingId?: number | null;
+  matchedBookingCode?: string | null;
+  status: BankStatementMatchStatus;
+  confirmed: boolean;
+  note?: string | null;
+}
+
+export interface BankStatementImportResponse {
+  sessionId: number;
+  bank: string;
+  filename: string;
+  totalRows: number;
+  parsedLines: number;
+  matchedLines: number;
+  confirmedLines: number;
+  lines: BankStatementLineDto[];
+  note?: string | null;
+}
+
+export interface BankStatementSessionResponse {
+  id: number;
+  bank: string;
+  filename: string;
+  totalRows?: number | null;
+  parsedLines?: number | null;
+  matchedLines?: number | null;
+  confirmedLines?: number | null;
+  uploadedByUserId?: number | null;
+  uploadedByEmail?: string | null;
+  createdAt?: string | null;
+}

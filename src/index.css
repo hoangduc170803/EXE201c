@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 @import 'leaflet/dist/leaflet.css';
 
 @tailwind base;
@@ -95,3 +96,7 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+body {
+  @apply bg-white text-gray-800;
+  font-family: 'Inter', sans-serif;
+}

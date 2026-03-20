@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, Plus, History, ArrowUpCircle, ArrowDownCircle, Copy, CheckCircle, Building2, Smartphone, CreditCard, X, Clock, AlertCircle, Upload, ImageIcon, FileCheck } from 'lucide-react';
+import { Wallet, Plus, History, ArrowUpCircle, ArrowDownCircle, Copy, CheckCircle, Building2, Smartphone, CreditCard, X, Clock, AlertCircle, ImageIcon, FileCheck } from 'lucide-react';
 
 interface WalletData {
   id: number;
