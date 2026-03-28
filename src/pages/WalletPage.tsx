@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, Plus, History, ArrowUpCircle, ArrowDownCircle, Copy, CheckCircle, Building2, Smartphone, CreditCard, X, Clock, AlertCircle, ImageIcon, FileCheck } from 'lucide-react';
+import { Wallet, Plus, History, ArrowUpCircle, ArrowDownCircle, Copy, CheckCircle, Building2, Smartphone, CreditCard, X, Clock, AlertCircle, ImageIcon, FileCheck, HelpCircle, Sparkles } from 'lucide-react';
 
 interface WalletData {
   id: number;
@@ -35,7 +35,8 @@ interface PaymentInfo {
   bankAccountNumber: string;
   bankAccountHolder: string;
   bankBranch: string;
-  qrCodeUrl: string;
+  bankBin: string; // Added for VietQR
+  qrCodeUrl: string; // Kept as fallback
   paymentNotes: string;
 }
 
@@ -45,12 +46,14 @@ const WalletPage: React.FC = () => {
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDepositModal, setShowDepositModal] = useState(false);
+  const [showTransferGuide, setShowTransferGuide] = useState(false);
   const [depositAmount, setDepositAmount] = useState('');
   const [depositMethod, setDepositMethod] = useState('BANK_TRANSFER');
   const [depositStep, setDepositStep] = useState<'input' | 'proof' | 'done'>('input');
   const [createdTransaction, setCreatedTransaction] = useState<Transaction | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [showQrFull, setShowQrFull] = useState(false);
+  const [vietQrUrl, setVietQrUrl] = useState('');
   // Proof step states
   const [transferReference, setTransferReference] = useState('');
   const [proofImageUrl, setProofImageUrl] = useState('');
@@ -108,11 +111,16 @@ const WalletPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         setPaymentInfo(data);
+        // Generate VietQR URL
+        if (data.bankBin && data.bankAccountNumber) {
+          const url = `https://img.vietqr.io/image/${data.bankBin}-${data.bankAccountNumber}-compact.png?accountName=${encodeURIComponent(data.bankAccountHolder)}`;
+          setVietQrUrl(url);
+        }
       }
-    } catch (error) {
-      console.error('Failed to load payment info:', error);
-    }
-  };
+    }catch (error) {
+        console.error('Failed to load payment info:', error);
+      }
+    };
 
   const handleDeposit = async () => {
     try {
@@ -285,13 +293,22 @@ const WalletPage: React.FC = () => {
               <p className="text-rose-100 text-sm mb-2">Số dư khả dụng</p>
               <h2 className="text-4xl font-bold">{formatCurrency(wallet?.balance || 0)}</h2>
             </div>
-            <button
-              onClick={() => { setShowDepositModal(true); setDepositStep('input'); }}
-              className="bg-white text-rose-500 px-6 py-3 rounded-xl font-semibold hover:bg-rose-50 transition-colors flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Nạp tiền
-            </button>
+            <div className="flex flex-col items-end gap-2">
+              <button
+                onClick={() => { setShowDepositModal(true); setDepositStep('input'); }}
+                className="bg-white text-rose-500 px-6 py-3 rounded-xl font-semibold hover:bg-rose-50 transition-colors flex items-center gap-2"
+              >
+                <Plus className="w-5 h-5" />
+                Nạp tiền
+              </button>
+              <button
+                onClick={() => setShowTransferGuide(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/90 text-rose-600 font-semibold shadow hover:bg-white transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" />
+                Hướng dẫn chuyển khoản
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4 pt-6 border-t border-rose-400">
             <div>
@@ -463,24 +480,22 @@ const WalletPage: React.FC = () => {
                               <div className="flex gap-0 divide-x divide-gray-100">
 
                                 {/* QR Code */}
-                                {paymentInfo.qrCodeUrl && (
-                                  <div className="flex flex-col items-center justify-center p-4 min-w-[140px] bg-gray-50">
-                                    <p className="text-xs text-gray-500 font-medium mb-2 uppercase tracking-wide">Quét QR</p>
+                                {(vietQrUrl) && (
+                                  <div className="flex items-center justify-center p-3 bg-gray-50">
                                     <button
                                       onClick={() => setShowQrFull(true)}
-                                      className="group relative border-2 border-dashed border-gray-300 hover:border-rose-400 rounded-xl p-1.5 transition-all"
+                                      className="group relative rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
                                       title="Nhấn để phóng to"
                                     >
                                       <img
-                                        src={paymentInfo.qrCodeUrl.startsWith('http') ? paymentInfo.qrCodeUrl : `http://localhost:8080${paymentInfo.qrCodeUrl}`}
-                                        alt="QR Code"
-                                        className="w-24 h-24 object-contain"
+                                        src={vietQrUrl}
+                                        alt="VietQR Code"
+                                        className="w-28 h-28 object-contain"
                                       />
-                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 rounded-xl transition-all flex items-center justify-center">
+                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
                                         <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-semibold bg-black/50 px-2 py-1 rounded-lg transition-all">Phóng to</span>
                                       </div>
                                     </button>
-                                    <p className="text-xs text-gray-400 mt-1.5">Nhấn để phóng to</p>
                                   </div>
                                 )}
 
@@ -551,7 +566,7 @@ const WalletPage: React.FC = () => {
                 </button>
                 {depositMethod === 'BANK_TRANSFER' && depositAmount && Number(depositAmount) >= 10000 && (
                   <p className="text-xs text-center text-gray-400">
-                    Chuyển khoản xong mới nhấn nút để tiếp tục gửi bằng chứng
+                    Chuyển khoản xong mới nhấn nút để tiếp tục gửi xác nhận
                   </p>
                 )}
               </div>
@@ -648,7 +663,7 @@ const WalletPage: React.FC = () => {
                   className="w-full py-3.5 bg-rose-500 text-white rounded-xl font-semibold hover:bg-rose-600 disabled:bg-gray-200 disabled:text-gray-400 transition-colors flex items-center justify-center gap-2 shadow-sm"
                 >
                   <FileCheck className="w-5 h-5" />
-                  Gửi bằng chứng
+                  Gửi xác nhận
                 </button>
                 <button
                   onClick={() => handleSubmitProof(true)}
@@ -715,8 +730,103 @@ const WalletPage: React.FC = () => {
         </div>
       )}
 
+      {/* Transfer Guide Popup */}
+      {showTransferGuide && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-40 p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl relative">
+            <button
+              onClick={() => setShowTransferGuide(false)}
+              className="absolute top-3 right-3 p-2 bg-gray-100/50 hover:bg-gray-200/60 rounded-full text-gray-600 hover:text-gray-800 transition-colors z-10"
+              title="Đóng"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Header with Image */}
+            <div className="relative">
+              <img
+                src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80"
+                alt="Hướng dẫn chuyển khoản"
+                className="w-full h-40 object-cover rounded-t-2xl"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-t-2xl" />
+              <div className="absolute bottom-0 left-0 p-5">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <HelpCircle className="w-6 h-6" />
+                  Hướng dẫn nạp tiền
+                </h3>
+                <p className="text-white/90 text-sm mt-1">Làm theo các bước sau để được cộng tiền nhanh nhất.</p>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-5">
+              {/* Tip Box */}
+              <div className="flex items-start gap-3 rounded-xl border border-rose-100 bg-rose-50 p-4">
+                <Sparkles className="w-5 h-5 text-rose-500 mt-0.5 flex-shrink-0" />
+                <div className="text-sm text-gray-700">
+                  <p className="font-semibold text-rose-700">Mẹo nạp nhanh</p>
+                  <p className="text-gray-600">
+                    Copy đúng <strong>số tài khoản</strong>, giữ nguyên <strong>nội dung chuyển khoản</strong> kèm <strong>mã giao dịch</strong> và <strong>chụp lại biên lai</strong> ngay sau khi chuyển.
+                  </p>
+                </div>
+              </div>
+
+              {/* Steps */}
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 bg-gray-200 text-gray-600 text-xs font-bold rounded-full flex items-center justify-center">1</div>
+                  <div className="text-sm text-gray-700 -mt-0.5">
+                    <p className="font-semibold">Tạo yêu cầu & Sao chép thông tin</p>
+                    <p className="text-gray-500">Nhập số tiền, chọn phương thức Chuyển khoản và sao chép thông tin tài khoản của StayEase.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 bg-gray-200 text-gray-600 text-xs font-bold rounded-full flex items-center justify-center">2</div>
+                  <div className="text-sm text-gray-700 -mt-0.5">
+                    <p className="font-semibold">Chuyển khoản với đúng nội dung</p>
+                    <p className="text-gray-500">Mở app ngân hàng, thực hiện chuyển khoản và điền <strong>Mã giao dịch</strong> được cung cấp vào nội dung.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 bg-gray-200 text-gray-600 text-xs font-bold rounded-full flex items-center justify-center">3</div>
+                  <div className="text-sm text-gray-700 -mt-0.5">
+                    <p className="font-semibold">Gửi xác nhận</p>
+                    <p className="text-gray-500">Quay lại và nhấn nút "Tôi đã chuyển khoản", sau đó tải lên ảnh biên lai để admin xác minh.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-6 h-6 bg-gray-200 text-gray-600 text-xs font-bold rounded-full flex items-center justify-center">4</div>
+                  <div className="text-sm text-gray-700 -mt-0.5">
+                    <p className="font-semibold">Chờ duyệt</p>
+                    <p className="text-gray-500">Admin sẽ kiểm tra và cộng tiền vào ví trong 5-10 phút. Theo dõi trạng thái trong Lịch sử giao dịch.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Note */}
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold">Lưu ý quan trọng:</p>
+                  <p>Không thay đổi số tiền hoặc nội dung sau khi đã tạo yêu cầu. Nếu cần hỗ trợ, hãy liên hệ admin qua chat nội bộ.</p>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowTransferGuide(false)}
+                className="w-full py-3 bg-rose-500 text-white rounded-xl font-semibold hover:bg-rose-600 transition-colors"
+              >
+                Tôi đã hiểu
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* QR Full Screen */}
-      {showQrFull && paymentInfo?.qrCodeUrl && (
+      {showQrFull && vietQrUrl && (
         <div
           className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
           onClick={() => setShowQrFull(false)}
@@ -725,9 +835,9 @@ const WalletPage: React.FC = () => {
             <X className="w-6 h-6" />
           </button>
           <img
-            src={paymentInfo.qrCodeUrl.startsWith('http') ? paymentInfo.qrCodeUrl : `http://localhost:8080${paymentInfo.qrCodeUrl}`}
-            alt="QR Code"
-            className="max-w-[85vw] max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+            src={vietQrUrl}
+            alt="VietQR Code"
+            className="max-w-[85vw] max-h-[85vh] object-contain rounded-2xl shadow-2xl bg-white p-4"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
