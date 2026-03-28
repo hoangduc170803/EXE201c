@@ -1,310 +1,331 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import React, {useState, useEffect} from 'react';
+import {Link, useLocation, useNavigate} from 'react-router-dom';
+import {useAuth} from '@/contexts/AuthContext';
 
 const Header: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuth();
-  const [walletBalance, setWalletBalance] = useState<number>(0);
-  const [loadingWallet, setLoadingWallet] = useState(false);
-  const [isAdminMode, setIsAdminMode] = useState(false);
+    const location = useLocation();
+    const navigate = useNavigate();
+    const {user, isAuthenticated, logout} = useAuth();
+    const [walletBalance, setWalletBalance] = useState<number>(0);
+    const [loadingWallet, setLoadingWallet] = useState(false);
+    const [isAdminMode, setIsAdminMode] = useState(false);
 
-  // Check if current path is admin route
-  useEffect(() => {
-    setIsAdminMode(location.pathname.startsWith('/admin'));
-  }, [location.pathname]);
+    // Check if current path is admin route
+    useEffect(() => {
+        setIsAdminMode(location.pathname.startsWith('/admin'));
+    }, [location.pathname]);
 
-  // Load wallet balance when user is logged in
-  useEffect(() => {
-    if (isAuthenticated && user?.roles?.includes('ROLE_HOST')) {
-      loadWalletBalance();
-    }
-  }, [isAuthenticated, user]);
+    // Load wallet balance when user is logged in
+    useEffect(() => {
+        if (isAuthenticated && user?.roles?.includes('ROLE_HOST')) {
+            loadWalletBalance();
+        }
+    }, [isAuthenticated, user]);
 
-  const loadWalletBalance = async () => {
-    try {
-      setLoadingWallet(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8080/api/wallet', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (response.ok) {
-        const walletData = await response.json();
-        setWalletBalance(walletData.balance || 0);
-      }
-    } catch (error) {
-      console.error('Failed to load wallet:', error);
-    } finally {
-      setLoadingWallet(false);
-    }
-  };
+    const loadWalletBalance = async () => {
+        try {
+            setLoadingWallet(true);
+            const token = localStorage.getItem('token');
+            const response = await fetch('http://localhost:8080/api/wallet', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+            if (response.ok) {
+                const walletData = await response.json();
+                setWalletBalance(walletData.balance || 0);
+            }
+        } catch (error) {
+            console.error('Failed to load wallet:', error);
+        } finally {
+            setLoadingWallet(false);
+        }
+    };
 
-  const formatCurrency = (amount: number) => {
-    if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(1)}M`;
-    } else if (amount >= 1000) {
-      return `${(amount / 1000).toFixed(0)}K`;
-    }
-    return amount.toString();
-  };
+    const formatCurrency = (amount: number) => {
+        if (amount >= 1000000) {
+            return `${(amount / 1000000).toFixed(1)}M`;
+        } else if (amount >= 1000) {
+            return `${(amount / 1000).toFixed(0)}K`;
+        }
+        return amount.toString();
+    };
 
-  const toggleAdminMode = () => {
-    if (isAdminMode) {
-      // Switch to user mode - go to home
-      navigate('/');
-    } else {
-      // Switch to admin mode - go to admin dashboard
-      navigate('/admin/dashboard');
-    }
-  };
+    const toggleAdminMode = () => {
+        if (isAdminMode) {
+            // Switch to user mode - go to home
+            navigate('/');
+        } else {
+            // Switch to admin mode - go to admin dashboard
+            navigate('/admin/dashboard');
+        }
+    };
 
-  return (
-    <header className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-gray-800 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm">
-      <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-4 sm:px-8 lg:px-12">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 cursor-pointer">
-          <div className="flex items-center justify-center text-primary">
+    return (
+        <header
+            className="sticky top-0 z-50 w-full border-b border-gray-200 dark:border-gray-800 bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-sm">
+            <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-4 sm:px-8 lg:px-12">
+                {/* Logo */}
+                <Link to="/" className="flex items-center gap-3 cursor-pointer">
+                    <div className="flex items-center justify-center text-primary">
             <span className="material-symbols-outlined !text-[32px] font-bold">
               home
             </span>
-          </div>
-          <h2 className="text-xl font-bold tracking-tight text-[#0d141b] dark:text-white">
-            HolaRent
-          </h2>
-        </Link>
+                    </div>
+                    <h2 className="text-xl font-bold tracking-tight text-[#0d141b] dark:text-white">
+                        HolaRent
+                    </h2>
+                </Link>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-4">
-          <Link
-            to="/host"
-            className={`hidden md:block text-sm font-medium hover:text-primary dark:hover:text-primary px-4 py-2 rounded-full transition-colors ${
-              location.pathname === '/host' ? 'text-primary font-semibold' : 'text-gray-600 dark:text-gray-300'
-            }`}
-          >
-            Cho thuê chỗ ở
-          </Link>
+                {/* Right Actions */}
+                <div className="flex items-center gap-4">
+                    <Link
+                        to="/host"
+                        className={`hidden md:block text-sm font-medium hover:text-primary dark:hover:text-primary px-4 py-2 rounded-full border transition-all transition-colors ${
+                            location.pathname === '/host'
+                                ? 'bg-rose-50 border-rose-500 text-rose-600 font-semibold'
+                                : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 dark:hover:border-rose-500/30 dark:hover:text-rose-500'
 
-          {/* Wallet Button - Only for Hosts */}
-          {isAuthenticated && user?.roles?.includes('ROLE_HOST')&& !user?.roles?.includes('ROLE_ADMIN') && (
-            <Link
-              to="/wallet"
-              className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${
-                location.pathname === '/wallet' 
-                  ? 'bg-rose-50 border-rose-500 text-rose-600 font-semibold' 
-                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 dark:hover:border-rose-500/30 dark:hover:text-rose-500'
-              }`}
-              title="Ví của tôi"
-            >
+                        }`}
+                        title="Dành cho chủ trọ"
+                    >
+                        <span className="text-sm font-semibold">
+                            Dành cho chủ trọ
+                        </span>
+                    </Link>
+
+                    {/* Wallet Button - Only for Hosts */}
+                    {isAuthenticated && user?.roles?.includes('ROLE_HOST') && !user?.roles?.includes('ROLE_ADMIN') && (
+                        <Link
+                            to="/wallet"
+                            className={`hidden md:flex items-center gap-2 px-3 py-2 rounded-full border transition-all ${
+                                location.pathname === '/wallet'
+                                    ? 'bg-rose-50 border-rose-500 text-rose-600 font-semibold'
+                                    : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/10 dark:hover:border-rose-500/30 dark:hover:text-rose-500'
+                            }`}
+                            title="Ví của tôi"
+                        >
               <span className="material-symbols-outlined !text-lg">
                 account_balance_wallet
               </span>
-              <span className="text-sm font-semibold">
+                            <span className="text-sm font-semibold">
                 {loadingWallet ? '...' : `${formatCurrency(walletBalance)} ₫`}
               </span>
-              {walletBalance < 50000 && (
-                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-              )}
-            </Link>
-          )}
+                            {walletBalance < 50000 && (
+                                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                            )}
+                        </Link>
+                    )}
 
-          {/* Admin Mode Toggle - Only for Admins */}
-          {isAuthenticated && user?.roles?.includes('ROLE_ADMIN') && (
-            <button
-              onClick={toggleAdminMode}
-              className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-full transition-all border ${
-                isAdminMode
-                  ? 'bg-purple-50 text-purple-600 border-purple-500 font-semibold' 
-                  : 'bg-transparent text-gray-600 dark:text-gray-300 border-transparent hover:bg-purple-50 dark:hover:bg-purple-500/10'
-              }`}
-              title={isAdminMode ? 'Chuyển sang chế độ người dùng' : 'Đi tới trang quản trị'}
-            >
+                    {/* Admin Mode Toggle - Only for Admins */}
+                    {isAuthenticated && user?.roles?.includes('ROLE_ADMIN') && (
+                        <button
+                            onClick={toggleAdminMode}
+                            className={`hidden md:flex items-center gap-2 px-4 py-2 rounded-full transition-all border ${
+                                isAdminMode
+                                    ? 'bg-purple-50 text-purple-600 border-purple-500 font-semibold'
+                                    : 'bg-transparent text-gray-600 dark:text-gray-300 border-transparent hover:bg-purple-50 dark:hover:bg-purple-500/10'
+                            }`}
+                            title={isAdminMode ? 'Chuyển sang chế độ người dùng' : 'Đi tới trang quản trị'}
+                        >
               <span className="material-symbols-outlined !text-[20px]">
                 {isAdminMode ? 'shield_person' : 'shield'}
               </span>
-              <span className="text-sm font-semibold">
+                            <span className="text-sm font-semibold">
                 {isAdminMode ? 'Admin' : 'Quản trị'}
               </span>
-            </button>
-          )}
+                        </button>
+                    )}
 
-          <button className="hidden md:flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300">
+                    <button
+                        className="hidden md:flex items-center justify-center w-10 h-10 rounded-full border hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-300">
             <span className="material-symbols-outlined !text-[20px]">
               language
             </span>
-          </button>
-          <Link 
-            to="/messages" 
-            className="hidden md:flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative text-gray-600 dark:text-gray-300"
-          >
-            <span className="material-symbols-outlined !text-[20px]">
-              chat_bubble
-            </span>
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </Link>
-          
-          {/* User Menu */}
-          <div className="relative group">
-            <button className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 hover:shadow-soft transition-all ml-1">
+                    </button>
+                    {/* User Menu */}
+                    <div className="relative group">
+                        <button
+                            className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 rounded-full p-1 pl-3 hover:shadow-soft transition-all ml-1">
               <span className="material-symbols-outlined !text-[20px] text-gray-600 dark:text-gray-400">
                 menu
               </span>
-              {isAuthenticated && user ? (
-                // Show user avatar or initial when logged in
-                <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold overflow-hidden relative">
-                  {user.avatarUrl ? (
-                    <>
-                      <img
-                        src={user.avatarUrl}
-                        alt={user.fullName || user.firstName || 'User'}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          // Hide image and show initial on error
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const fallback = target.nextElementSibling as HTMLElement;
-                          if (fallback) fallback.style.display = 'flex';
-                        }}
-                      />
-                      <span
-                        className="absolute inset-0 flex items-center justify-center w-full h-full bg-primary text-white text-sm font-semibold"
-                        style={{ display: 'none' }}
-                      >
+                            {isAuthenticated && user ? (
+                                // Show user avatar or initial when logged in
+                                <div
+                                    className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-semibold overflow-hidden relative">
+                                    {user.avatarUrl ? (
+                                        <>
+                                            <img
+                                                src={user.avatarUrl}
+                                                alt={user.fullName || user.firstName || 'User'}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    // Hide image and show initial on error
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.style.display = 'none';
+                                                    const fallback = target.nextElementSibling as HTMLElement;
+                                                    if (fallback) fallback.style.display = 'flex';
+                                                }}
+                                            />
+                                            <span
+                                                className="absolute inset-0 flex items-center justify-center w-full h-full bg-primary text-white text-sm font-semibold"
+                                                style={{display: 'none'}}
+                                            >
                         {(user.fullName || user.firstName || user.email || 'U').charAt(0).toUpperCase()}
                       </span>
-                    </>
-                  ) : (
-                    <span className="flex items-center justify-center w-full h-full">
+                                        </>
+                                    ) : (
+                                        <span className="flex items-center justify-center w-full h-full">
                       {(user.fullName || user.firstName || user.email || 'U').charAt(0).toUpperCase()
                       }
                     </span>
-                  )}
-                </div>
-              ) : (
-                // Show default icon when not logged in
-                <div className="bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full p-1 flex items-center justify-center">
+                                    )}
+                                </div>
+                            ) : (
+                                // Show default icon when not logged in
+                                <div
+                                    className="bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full p-1 flex items-center justify-center">
                   <span className="material-symbols-outlined !text-[24px] filled">
                     account_circle
                   </span>
-                </div>
-              )}
-            </button>
-            
-            {/* Dropdown Menu */}
-            <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-              <div className="py-2">
-                {!isAuthenticated ? (
-                  <>
-                    <Link to="/auth" className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                      Đăng nhập
-                    </Link>
-                    <Link to="/auth" className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                      Đăng ký
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <span className="material-symbols-outlined !text-[16px]">person</span>
-                      Tài khoản
-                    </Link>
-                    
-                    {/* Wallet Link in Dropdown - For Hosts */}
-                    {user?.roles?.includes('ROLE_HOST')&& !user?.roles?.includes('ROLE_ADMIN') && (
-                      <Link to="/wallet" className="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <div className="flex items-center gap-3">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                          </svg>
-                          Ví của tôi
-                        </div>
-                        <span className={`text-xs font-semibold ${walletBalance < 50000 ? 'text-red-600' : 'text-green-600'}`}>
+                                </div>
+                            )}
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        <div
+                            className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                            <div className="py-2">
+                                {!isAuthenticated ? (
+                                    <>
+                                        <Link to="/auth"
+                                              className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            Đăng nhập
+                                        </Link>
+                                        <Link to="/auth"
+                                              className="block px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            Đăng ký
+                                        </Link>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Link to="/profile"
+                                              className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            <span className="material-symbols-outlined !text-[16px]">person</span>
+                                            Tài khoản
+                                        </Link>
+
+                                        {/* Wallet Link in Dropdown - For Hosts */}
+                                        {user?.roles?.includes('ROLE_HOST') && !user?.roles?.includes('ROLE_ADMIN') && (
+                                            <Link to="/wallet"
+                                                  className="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                <div className="flex items-center gap-3">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor"
+                                                         viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round"
+                                                              strokeWidth={2}
+                                                              d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                                    </svg>
+                                                    Ví của tôi
+                                                </div>
+                                                <span
+                                                    className={`text-xs font-semibold ${walletBalance < 50000 ? 'text-red-600' : 'text-green-600'}`}>
                           {formatCurrency(walletBalance)} ₫
                         </span>
-                      </Link>
-                    )}
-                    
-                    {/* Admin Section in Dropdown - For Admins */}
-                    {user?.roles?.includes('ROLE_ADMIN') && (
-                      <>
-                        <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                        <div className="px-3 py-2">
-                          <div className="flex items-center justify-between mb-2">
+                                            </Link>
+                                        )}
+
+                                        {/* Admin Section in Dropdown - For Admins */}
+                                        {user?.roles?.includes('ROLE_ADMIN') && (
+                                            <>
+                                                <div
+                                                    className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                                                <div className="px-3 py-2">
+                                                    <div className="flex items-center justify-between mb-2">
                             <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase">
                               Admin Panel
                             </span>
-                            <button
-                              onClick={toggleAdminMode}
-                              className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
-                                isAdminMode
-                                  ? 'bg-purple-500 text-white'
-                                  : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
-                              }`}
-                            >
-                              {isAdminMode ? 'Admin Mode' : 'User Mode'}
-                            </button>
-                          </div>
+                                                        <button
+                                                            onClick={toggleAdminMode}
+                                                            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                                                isAdminMode
+                                                                    ? 'bg-purple-500 text-white'
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-purple-100'
+                                                            }`}
+                                                        >
+                                                            {isAdminMode ? 'Admin Mode' : 'User Mode'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <Link
+                                                    to="/admin/dashboard"
+                                                    className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                >
+                                                    <span
+                                                        className="material-symbols-outlined !text-[16px]">admin_panel_settings</span>
+                                                    Dashboard
+                                                </Link>
+                                                <Link
+                                                    to="/admin/payment-settings"
+                                                    className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                >
+                                                    <span
+                                                        className="material-symbols-outlined !text-[16px]">settings</span>
+                                                    Cài đặt Thanh toán
+                                                </Link>
+                                                <div
+                                                    className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                                            </>
+                                        )}
+
+                                        <Link to="/profile?tab=bookings"
+                                              className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            <span
+                                                className="material-symbols-outlined !text-[16px]">calendar_month</span>
+                                            Lịch sử đặt phòng
+                                        </Link>
+                                        <Link to="/profile?tab=favorites"
+                                              className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            <span className="material-symbols-outlined !text-[16px]">favorite</span>
+                                            Yêu thích
+                                        </Link>
+                                        <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                                        <Link to="/messages"
+                                              className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            <span className="material-symbols-outlined !text-[16px]">chat_bubble</span>
+                                            Tin nhắn
+                                        </Link>
+                                        {user?.roles?.includes('ROLE_HOST') && (
+                                            <Link to="/host"
+                                                  className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                                                <span
+                                                    className="material-symbols-outlined !text-[16px]">home_work</span>
+                                                Quản lý phòng trọ
+                                            </Link>
+                                        )}
+                                        <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+                                        <Link to="/profile?tab=settings"
+                                              className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
+                                            <span className="material-symbols-outlined !text-[16px]">settings</span>
+                                            Cài đặt
+                                        </Link>
+                                        <button
+                                            onClick={logout}
+                                            className="flex items-center gap-3 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400"
+                                        >
+                                            <span className="material-symbols-outlined !text-[16px]">logout</span>
+                                            Đăng xuất
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                         </div>
-                        <Link
-                          to="/admin/dashboard"
-                          className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          <span className="material-symbols-outlined !text-[16px]">admin_panel_settings</span>
-                          Dashboard
-                        </Link>
-                        <Link
-                          to="/admin/payment-settings"
-                          className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          <span className="material-symbols-outlined !text-[16px]">settings</span>
-                          Cài đặt Thanh toán
-                        </Link>
-                        <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                      </>
-                    )}
-                    
-                    <Link to="/profile?tab=bookings" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <span className="material-symbols-outlined !text-[16px]">calendar_month</span>
-                      Lịch sử đặt phòng
-                    </Link>
-                    <Link to="/profile?tab=favorites" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <span className="material-symbols-outlined !text-[16px]">favorite</span>
-                      Yêu thích
-                    </Link>
-                    <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                    <Link to="/messages" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <span className="material-symbols-outlined !text-[16px]">chat_bubble</span>
-                      Tin nhắn
-                    </Link>
-                    {user?.roles?.includes('ROLE_HOST') && (
-                      <Link to="/host" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <span className="material-symbols-outlined !text-[16px]">home_work</span>
-                        Quản lý phòng trọ
-                      </Link>
-                    )}
-                    <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
-                    <Link to="/profile?tab=settings" className="flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700">
-                      <span className="material-symbols-outlined !text-[16px]">settings</span>
-                      Cài đặt
-                    </Link>
-                    <button
-                      onClick={logout}
-                      className="flex items-center gap-3 w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 text-red-600 dark:text-red-400"
-                    >
-                      <span className="material-symbols-outlined !text-[16px]">logout</span>
-                      Đăng xuất
-                    </button>
-                  </>
-                )}
-              </div>
+                    </div>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
+        </header>
+    );
 };
 
 export default Header;

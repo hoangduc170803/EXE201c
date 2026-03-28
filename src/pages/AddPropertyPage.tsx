@@ -1765,7 +1765,9 @@ const AddPropertyPage: React.FC = () => {
     { title: 'Hình ảnh & Video', render: renderImages },
     { title: 'Cấu hình & Thanh toán', render: renderPaymentConfig },
   ];
-
+    const progressPercentage = steps.length > 1
+        ? (currentStep / (steps.length - 1)) * 100
+        : 100;
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
@@ -1886,56 +1888,47 @@ const AddPropertyPage: React.FC = () => {
             </button>
           </div>
 
-          {/* Enhanced Progress bar with step dots */}
-          <div className="relative">
-            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-              <div
-                className={`h-2 rounded-full transition-all duration-500 ease-out ${
-                  rentalType === 'SHORT_TERM' 
-                    ? 'bg-gradient-to-r from-rose-400 to-rose-600' 
-                    : 'bg-gradient-to-r from-blue-400 to-blue-600'
-                }`}
-                style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
-              />
+            <div className="relative px-1 py-1">
+                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div
+                        className="h-2 rounded-full transition-all duration-500 ease-out bg-gradient-to-r from-blue-400 to-blue-600"
+                        style={{width: `${progressPercentage}%`}}
+                    />
+                </div>
+
+                {/* Step dots */}
+                <div className="pointer-events-none absolute inset-x-1 top-1/2 -translate-y-1/2 flex justify-between">
+                    {steps.map((step, index) => (
+                        <div
+                            key={index}
+                            className={`w-3 h-3 rounded-full border border-white transition-all duration-300 ${
+                                index <= currentStep
+                                    ? 'bg-blue-500 shadow-md'
+                                    : 'bg-gray-300'
+                            }`}
+                            title={step.title}
+                        />
+                    ))}
+                </div>
             </div>
 
-            {/* Step dots */}
-            <div className="absolute top-0 left-0 w-full flex justify-between px-1" style={{ marginTop: '-5px' }}>
-              {steps.map((step, index) => (
-                <div
-                  key={index}
-                  className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                    index <= currentStep
-                      ? rentalType === 'SHORT_TERM'
-                        ? 'bg-rose-500 scale-125 shadow-lg'
-                        : 'bg-blue-500 scale-125 shadow-lg'
-                      : 'bg-gray-300'
-                  }`}
-                  title={step.title}
-                />
-              ))}
+            {/* Step names preview (hidden on mobile) */}
+            <div className="hidden md:flex justify-between mt-3 text-xs">
+                {steps.map((step, index) => (
+                    <div
+                        key={index}
+                        className={`flex-1 text-center tracking-[0.01em] transition-colors ${
+                            index === currentStep ?
+                                'text-blue-600 font-semibold'
+                                : index < currentStep
+                                    ? 'text-gray-700'
+                                    : 'text-gray-400'
+                        }`}
+                    >
+                        {step.title}
+                    </div>
+                ))}
             </div>
-          </div>
-
-          {/* Step names preview (hidden on mobile) */}
-          <div className="hidden md:flex justify-between mt-3 text-xs">
-            {steps.map((step, index) => (
-              <div
-                key={index}
-                className={`flex-1 text-center transition-colors ${
-                  index === currentStep
-                    ? rentalType === 'SHORT_TERM'
-                      ? 'text-rose-600 font-semibold'
-                      : 'text-blue-600 font-semibold'
-                    : index < currentStep
-                    ? 'text-gray-700'
-                    : 'text-gray-400'
-                }`}
-              >
-                {step.title}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
